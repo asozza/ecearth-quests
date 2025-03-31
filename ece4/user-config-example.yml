@@ -1,14 +1,9 @@
 - base.context:
     experiment:
-      # Set the correct EC-Earth4 base_dir, src_dir and run_dir
-      #
-      # The default setting for base_dir below uses the current working
-      # directory (provided by ScriptEngine as {{se.cli.cwd}}) and assumes that
-      # this script is at <ECE4_BASE_DIR>/runtime/se
-      # Please change this setting if it is not correct!
-      base_dir: "{{se.cli.cwd}}/../.."
-      src_dir: !noparse "{{experiment.base_dir}}/sources"
-      run_dir: !noparse "/path/to/run_dir/{{experiment.id}}"
+      run_dir:  !noparse "RUNDIR/{{experiment.id}}"
+      base_dir: !noparse "BASEDIR"
+      src_dir:  !noparse "{{experiment.base_dir}}/sources"
+      ini_dir:  !noparse "INIDIR"
 
       monitoring:
         # To activate monitoring, set
@@ -22,5 +17,3 @@
         # If redmine_api_key is not a valid key (unset or REDMINE_API_KEY), then
         # a Markdown representation of monitoring results is created locally in
         # the monitoring/markdown directory.
-        # If you want to run only the upload part, set
-        #   experiment.monitoring.upload_only: true

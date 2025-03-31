@@ -1,0 +1,71 @@
+- base.context:
+    experiment:
+      id: TEST
+      description: A new ECE4 AMIP experiment
+
+      schedule:
+        all: !rrule >
+          DTSTART:19900101
+          RRULE:FREQ=YEARLY;UNTIL=19920101
+
+      nemo:
+        initial_state: null
+        start_from:
+
+      monitoring:
+        activate: false
+
+    model_config:
+      components: [oifs, amipfr, xios, oasis]
+
+      oifs:
+        grid: !noparse "{{model_config.oifs.all_grids.TL63L31}}"
+      oasis:
+        copy_weights: false
+
+    job:
+      # Configure launch method with settings
+      # supported methods:
+      #   slurm-hetjob  # SLURM heterogeneous job
+      #   slurm-mp-taskset  # SLURM srun with multi-prog, hostfile and taskset
+      #   slurm-wrapper-taskset  # SLURM srun with wrapper, hostfile and taskset
+      #   slurm-shell  # SLURM + generic shell script template (needs job.launch.shell.script)
+      # For configuration of the respective method, see next section!
+      launch:
+        method: slurm-shell
+        shell:
+          script: run-srun-multiprog.sh
+        
+      resubmit: false
+
+      oifs:
+        ntasks: 253
+        ntasks_per_node: 128
+        omp_num_threads: 1
+        omp_stacksize: "128M"
+      xios:
+        ntasks: 1
+        ntasks_per_node: 128
+      amipfr:
+        ntasks: 1
+        ntasks_per_node: 1
+
+      # If true, the job will resubmit itself to run a further leg
+      resubmit: true
+
+      slurm:
+        sbatch:
+          opts:
+            account: "spitdav2"
+            time: "06:00:00"
+            time: "00:20:00"
+            output: !noparse "{{experiment.id}}.log"
+            job-name: !noparse "ECE4_{{experiment.id}}"
+            qos: "np"
+            ntasks-per-core: 1
+        srun:
+            args: [
+            --label,
+            --kill-on-bad-exit,
+        ]
+          args: [--label, --kill-on-bad-exit]

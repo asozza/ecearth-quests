@@ -11,16 +11,19 @@ machine=ecmwf-hpc2020-intel+openmpi
 
 # please define where the source code is
 #ecedir=$HPCPERM/src/ecearth4-epochal
-ecedir=$HPCPERM/src/gitlab/ecearth4-fork
+#ecedir=$HPCPERM/src/gitlab/ecearth4-fork
 #ecedir=$HPCPERM/ecearth4/revisions/main
+ecedir=$HPCPERM/ec-earth-4-fork
 
 # please define where the jobs are
-expdir=$HPCPERM/ecearth4/jobs
+#expdir=$HPCPERM/ecearth/jobs
+expdir=$HPCPERM/exp
 default=$ecedir/scripts/runtime
 rundir=$SCRATCH/ece4
 
 # hard-coded to use Ale new updated files
-inidir=/ec/res4/hpcperm/itas/data/ECE4-DATA
+#inidir=/ec/res4/hpcperm/itas/data/ECE4-DATA
+inidir=//ec/res4/hpcperm/ecme3497/ece4-database
 
 
 if [ -z $jobname ] ; then
