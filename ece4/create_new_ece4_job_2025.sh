@@ -11,12 +11,12 @@ machine=ecmwf-hpc2020-intel+openmpi
 
 # please define where the source code is
 #ecedir=$HPCPERM/src/ecearth4-epochal
-ecedir=$HPCPERM/src/gitlab/v0.2/ecearth4-fork
+ecedir=$HPCPERM/src/gitlab/ecearth4-fork
 #ecedir=$HPCPERM/ecearth4/revisions/main
 
 # please define where the jobs are
 expdir=$HPCPERM/ecearth4/jobs
-default=$ecedir/runtime/se
+default=$ecedir/scripts/runtime
 rundir=$SCRATCH/ece4
 
 # hard-coded to use Ale new updated files
@@ -41,7 +41,7 @@ cp -r $default/templates $expdir/$jobname
 cp experiment-config-$kind.yml $expdir/$jobname/$jobname.yml
 sed -i "s/TEST/${jobname}/g" $expdir/$jobname/$jobname.yml
 
-cp user-config-old.yml $expdir/$jobname/user-config.yml
+cp user-config-example.yml $expdir/$jobname/user-config.yml
 sed -i "s@RUNDIR@${rundir}@g" $expdir/$jobname/user-config.yml
 sed -i "s@BASEDIR@${ecedir}@g" $expdir/$jobname/user-config.yml
 sed -i "s@INIDIR@${inidir}@g" $expdir/$jobname/user-config.yml
