@@ -6,7 +6,7 @@
       schedule:
         all: !rrule >
           DTSTART:19900101
-          RRULE:FREQ=MONTHLY;UNTIL=20000101
+          RRULE:FREQ=MONTHLY;UNTIL=19920101
         nlegs: 1
 
       # If true, remove the rundir folder before starting the experiment (if it exists)
