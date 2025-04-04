@@ -6,16 +6,33 @@ Some caution is required to edit the YAML CommentedMap.
 """
 
 import os
+import shutil
 import argparse
 from ruamel.yaml.scalarstring import PlainScalarString
 from ruamel.yaml.comments import TaggedScalar
 from yaml_util import load_yaml, save_yaml
+
+def create_folder(expname, config):
+    """
+    Create a new folder for the experiment.
+    """
+    # create the folder
+    conf = load_yaml(config)
+    exp_dir = os.path.join(conf['job_dir'], expname)
+    if os.path.exists(exp_dir):
+        raise ValueError(f"Experiment {expname} already exists. Please choose a different name.")
+    os.makedirs(exp_dir, exist_ok=True)
+
+    base_dir = os.path.join(conf["ece_dir"], "scripts", "runtime")
+    for directory in ["scriptlib", "templates"]:
+        shutil.copytree(os.path.join(base_dir, directory), os.path.join(exp_dir, directory), dirs_exist_ok=True)
 
 
 def generate_job(kind, config, expname):
 
     # load configuration file and setup core variables
     conf = load_yaml(config)
+    exp_dir = os.path.join(conf['job_dir'], expname)
     exp_base_file = os.path.join(conf["ece_dir"], "scripts", "runtime", "experiment-config-example.yml")
     account = conf["account"]
 
@@ -57,7 +74,7 @@ def generate_job(kind, config, expname):
             { 'nodes': 1, 'oifs': 49, 'nemo': 77 },
         ]
 
-    save_yaml(f'{expname}.yml', exp_base)
+    save_yaml(os.path.join(exp_dir, f'{expname}.yml'), exp_base)
 
 def noparse_block(value):
     """
@@ -83,4 +100,5 @@ if __name__ == "__main__":
         raise ValueError("Invalid experiment type. Choose either 'AMIP' or 'CPLD'.")
     if len(args.expname) != 4:
         raise ValueError("Experiment name must be 4 characters long.")
+    create_folder(args.expname, args.config)
     generate_job(args.kind, args.config, args.expname)
