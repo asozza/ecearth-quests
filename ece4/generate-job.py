@@ -9,7 +9,7 @@ import os
 import shutil
 import argparse
 from ruamel.yaml.scalarstring import PlainScalarString
-from ruamel.yaml.comments import TaggedScalar
+from ruamel.yaml.comments import TaggedScalar, CommentedSeq
 from yaml_util import load_yaml, save_yaml
 
 def create_folder(expname, config, clean=False):
@@ -145,8 +145,16 @@ def list_block(value):
     """
     Create a PlanScalar with a list
     """
-    return [PlainScalarString(x) for x in value]
+    return list_compact([PlainScalarString(x) for x in value])
 
+def list_compact(list):
+
+    """
+    Create a compact list
+    """
+    comm = CommentedSeq(list)
+    comm.fa.set_flow_style()
+    return comm
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate job configuration for experiments.")
