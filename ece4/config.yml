@@ -1,12 +1,13 @@
-machine: "ecmwf-hpc2020-intel+openmpi"
+# configuration file for generator of the experiment
+# please for now do not use bash environment variables
+# (e.g. $HOME) in this file
+
+platform: "ecmwf-hpc2020-intel+openmpi"
+job_dir: "/lus/h2resw01/hpcperm/ccpd/ecearth4/jobs"
+run_dir: "/lus/h2resw01/scratch/ccpd/ece4"
 ece_dir: "/lus/h2resw01/hpcperm/ccpd/ecearth4/revisions/main"
+ini_dir: "PIZZA-TO-BESET"
+account: "spitsozz"
 resolution:
   oifs: TL63L91
   nemo: eORCA1L75
-#expdir=$HPCPERM/exp
-#default=$ecedir/scripts/runtime
-#rundir=$SCRATCH/ece4
-
-# hard-coded to use Ale new updated files
-#inidir=/ec/res4/hpcperm/itas/data/ECE4-DATA
-#inidir=//ec/res4/hpcperm/ecme3497/ece4-database

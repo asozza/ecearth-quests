@@ -12,27 +12,84 @@ from ruamel.yaml.scalarstring import PlainScalarString
 from ruamel.yaml.comments import TaggedScalar
 from yaml_util import load_yaml, save_yaml
 
-def create_folder(expname, config):
+def create_folder(expname, config, clean=False):
     """
     Create a new folder for the experiment.
     """
     # create the folder
     conf = load_yaml(config)
-    exp_dir = os.path.join(conf['job_dir'], expname)
-    if os.path.exists(exp_dir):
+    job_dir = os.path.join(conf['job_dir'], expname)
+    if clean:
+        if os.path.exists(job_dir):
+            shutil.rmtree(job_dir)
+            print(f"Removed existing job directory: {job_dir}")
+        else:
+            print(f"No existing job directory to remove: {job_dir}")
+
+    if os.path.exists(job_dir):
         raise ValueError(f"Experiment {expname} already exists. Please choose a different name.")
-    os.makedirs(exp_dir, exist_ok=True)
+    os.makedirs(job_dir, exist_ok=True)
 
     base_dir = os.path.join(conf["ece_dir"], "scripts", "runtime")
     for directory in ["scriptlib", "templates"]:
-        shutil.copytree(os.path.join(base_dir, directory), os.path.join(exp_dir, directory), dirs_exist_ok=True)
+        shutil.copytree(os.path.join(base_dir, directory), os.path.join(job_dir, directory), dirs_exist_ok=True)
+    
+    print(f"Created job directory: {job_dir}")
+
+def create_launch(expname, config):
+    """
+    Create a launch bash script for the experiment.
+    """
+
+    conf = load_yaml(config)
+    job_dir = os.path.join(conf['job_dir'], expname)
+    ece_dir = conf["ece_dir"]
+    platform = conf["platform"]
+
+
+    bash_script = f"""#!/bin/bash
+
+# basic script to run the ECE4 job
+platform={ece_dir}/scripts/platforms/{platform}
+
+se user-config.yml {expname}.yml ${{platform}} scriptlib/main.yml --loglevel INFO
+"""
+
+    script_path = os.path.join(job_dir, f"launch.sh")
+    with open(script_path, "w") as f:
+        f.write(bash_script)
+
+    # Optional: make it executable (if on Unix)
+    os.chmod(script_path, 0o755)
+
+    print(f"Bash script written to: {script_path}")
+
+def generate_user_config(expname, config):
+
+    """
+    Generate a user configuration file for the experiment.
+    """
+    # load configuration file 
+    conf = load_yaml(config)
+
+    # define configuration
+    user_config = load_yaml(os.path.join(conf["ece_dir"], "scripts", "runtime", "user-config-example.yml"))
+    user_config[0]['base.context']['experiment']['run_dir'] = noparse_block(conf['run_dir']+"/{{experiment.id}}")
+    user_config[0]['base.context']['experiment']['ini_dir'] =  noparse_block(conf['ini_dir'])
+    user_config[0]['base.context']['experiment']['base_dir'] =  noparse_block(conf['ece_dir'])
+
+    # save the user configuration file
+    job_dir = os.path.join(conf['job_dir'], expname)
+    user_config_file = os.path.join(job_dir, "user-config.yml")
+    save_yaml(user_config_file, user_config)
+    print(f"User configuration file written to: {user_config_file}")
 
 
 def generate_job(kind, config, expname):
 
     # load configuration file and setup core variables
     conf = load_yaml(config)
-    exp_dir = os.path.join(conf['job_dir'], expname)
+    job_dir = os.path.join(conf['job_dir'], expname)
     exp_base_file = os.path.join(conf["ece_dir"], "scripts", "runtime", "experiment-config-example.yml")
     account = conf["account"]
 
@@ -74,13 +131,15 @@ def generate_job(kind, config, expname):
             { 'nodes': 1, 'oifs': 49, 'nemo': 77 },
         ]
 
-    save_yaml(os.path.join(exp_dir, f'{expname}.yml'), exp_base)
+    yaml_path = os.path.join(job_dir, f'{expname}.yml')
+    save_yaml(os.path.join(job_dir, f'{expname}.yml'), exp_base)
+    print(f"YAML script script written to: {yaml_path}")
 
 def noparse_block(value):
     """
     Create a block scalar with the !noparse tag.
     """
-    return TaggedScalar(value, tag="!noparse")
+    return TaggedScalar(value, tag="!noparse", style='"')
 
 def list_block(value):
     """
@@ -91,14 +150,17 @@ def list_block(value):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate job configuration for experiments.")
-    parser.add_argument("--kind", type=str, required=True, help="Type of experiment (e.g., AMIP).")
-    parser.add_argument("--config", type=str, help="Type of experiment (e.g., AMIP).", default="config.yml")
-    parser.add_argument("--expname", type=str, required=True, help="Experiment name (e.g., aa00).")
+    parser.add_argument("-k", "--kind", type=str, required=True, help="Type of experiment (e.g., AMIP).")
+    parser.add_argument("-c","--config", type=str, help="Type of experiment (e.g., AMIP).", default="config.yml")
+    parser.add_argument("-e", "--expname", type=str, required=True, help="Experiment name (e.g., aa00).")
+    parser.add_argument("--clean", action="store_true", help="Clean up the experiment folder.")
 
     args = parser.parse_args()
     if args.kind.upper() not in ["AMIP", "CPLD"]:
         raise ValueError("Invalid experiment type. Choose either 'AMIP' or 'CPLD'.")
     if len(args.expname) != 4:
         raise ValueError("Experiment name must be 4 characters long.")
-    create_folder(args.expname, args.config)
+    create_folder(args.expname, args.config, args.clean)
     generate_job(args.kind, args.config, args.expname)
+    generate_user_config(args.expname, args.config)
+    create_launch(args.expname, args.config)
