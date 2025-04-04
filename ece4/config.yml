@@ -1,0 +1,12 @@
+machine: "ecmwf-hpc2020-intel+openmpi"
+ece_dir: "/lus/h2resw01/hpcperm/ccpd/ecearth4/revisions/main"
+resolution:
+  oifs: TL63L91
+  nemo: eORCA1L75
+#expdir=$HPCPERM/exp
+#default=$ecedir/scripts/runtime
+#rundir=$SCRATCH/ece4
+
+# hard-coded to use Ale new updated files
+#inidir=/ec/res4/hpcperm/itas/data/ECE4-DATA
+#inidir=//ec/res4/hpcperm/ecme3497/ece4-database
