@@ -32,33 +32,7 @@ def load_yaml(file: str= None, ruamel_type: str = 'rt'):
     
     cfg = yaml.load(yaml_text)
 
-    if isinstance(cfg, CommentedSeq):
-        cfg = cfg[0]
-
     return cfg
-
-def modify_rundir(run_dir: str = None, path: str = None):
-    """
-    Modify the run_dir in the yaml file
-    """
-
-    if path is None:
-        raise ValueError('path is None')
-
-    # Open yaml file
-    file = load_yaml(path)
-
-    # Modify rundir
-    try:
-        old_value = file['base.context']['experiment']['run_dir']
-        # print(f'Old value: {old_value}') # Debug purpose
-
-        # modify old_value.value keeping the TaggedScalar
-        file['base.context']['experiment']['run_dir'].value = run_dir
-    except KeyError:
-        raise KeyError('Key not found')
-    
-    return file
 
 
 def save_yaml(path: str = None, cfg: dict = None, ruamel_type: str = 'rt'):

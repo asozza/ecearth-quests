@@ -1,0 +1,13 @@
+# configuration file for generator of the experiment
+# please for now do not use bash environment variables
+# (e.g. $HOME) in this file
+
+platform: "ecmwf-hpc2020-intel+openmpi"
+job_dir: "/lus/h2resw01/hpcperm/ccpd/ecearth4/jobs"
+run_dir: "/lus/h2resw01/scratch/ccpd/ece4"
+ece_dir: "/lus/h2resw01/hpcperm/ccpd/ecearth4/revisions/main"
+ini_dir: "PIZZA-TO-BESET"
+account: "spitsozz"
+resolution:
+  oifs: TL63L91
+  nemo: eORCA1L75
