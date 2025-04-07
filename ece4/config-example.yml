@@ -1,6 +1,10 @@
 # configuration file for generator of the experiment
 # please for now do not use bash environment variables
 # (e.g. $HOME) in this file
+#
+# TO CUSTOMIZE THIS FILE, COPY IT AS: config.yml 
+# (untracked by .gitignore)
+#
 
 platform: "ecmwf-hpc2020-intel+openmpi"
 job_dir: "/lus/h2resw01/hpcperm/ccpd/ecearth4/jobs"
