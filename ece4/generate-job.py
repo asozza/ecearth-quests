@@ -52,7 +52,7 @@ def create_launch(expname, config):
 # basic script to run the ECE4 job
 platform={ece_dir}/scripts/platforms/{platform}
 
-se user-config.yml {expname}.yml ${{platform}} scriptlib/main.yml --loglevel INFO
+se user-config.yml {expname}.yml ${{platform}} scriptlib/main.yml --loglevel info
 """
 
     script_path = os.path.join(job_dir, f"launch.sh")
