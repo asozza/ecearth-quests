@@ -14,7 +14,7 @@ from yaml_util import load_yaml, save_yaml
 from yaml_util import noparse_block, list_block
 
 
-def create_folder(expname, config, clean=False):
+def create_folder(kind, expname, config, clean=False):
     """
     Create a new folder for the experiment.
 
@@ -42,14 +42,17 @@ def create_folder(expname, config, clean=False):
     os.makedirs(job_dir, exist_ok=True)
 
     # copy the template files
-    base_dir = os.path.join(conf["ece_dir"], "scripts", "runtime")
+    if kind == "OMIP":
+        base_dir = os.path.join(conf["oce_dir"], "scripts", "runtime")    
+    else:
+        base_dir = os.path.join(conf["ece_dir"], "scripts", "runtime")
     for directory in ["scriptlib", "templates"]:
         shutil.copytree(os.path.join(base_dir, directory), os.path.join(job_dir, directory), dirs_exist_ok=True)
     
     print(f"Created job directory: {job_dir}")
 
 
-def create_launch(expname, config):
+def create_launch(kind, expname, config):
     """
     Create a launch bash script for the experiment.
 
@@ -60,7 +63,10 @@ def create_launch(expname, config):
 
     conf = load_yaml(config)
     job_dir = os.path.join(conf['job_dir'], expname)
-    ece_dir = conf["ece_dir"]
+    if kind == "OMIP":
+        ece_dir = conf["oce_dir"]
+    else:
+        ece_dir = conf["ece_dir"]
     platform = conf["platform"]
 
     bash_script = f"""#!/bin/bash
@@ -82,18 +88,27 @@ se user-config.yml {expname}.yml ${{platform}} scriptlib/main.yml --loglevel inf
     print(f"Bash script written to: {script_path}")
 
 
-def generate_user_config(expname, config):
+def generate_user_config(kind, expname, config):
     """
     Generate a user configuration file for the experiment.
+
+    Args:
+        kind (str): Type of experiment (e.g., AMIP).
+        expname (str): Name of the experiment.
+        config (str): Path to the configuration file.
     """
     # load configuration file 
     conf = load_yaml(config)
+    if kind == 'OMIP':
+        src_dir = conf['oce_dir']
+    else:
+        src_dir = conf['ece_dir']
 
     # define configuration
-    user_config = load_yaml(os.path.join(conf["ece_dir"], "scripts", "runtime", "user-config-example.yml"))
+    user_config = load_yaml(os.path.join(src_dir, "scripts", "runtime", "user-config-example.yml"))
     user_config[0]['base.context']['experiment']['run_dir'] = noparse_block(conf['run_dir']+"/{{experiment.id}}")
     user_config[0]['base.context']['experiment']['ini_dir'] =  noparse_block(conf['ini_dir'])
-    user_config[0]['base.context']['experiment']['base_dir'] =  noparse_block(conf['ece_dir'])
+    user_config[0]['base.context']['experiment']['base_dir'] =  noparse_block(src_dir)
 
     # save the user configuration file
     job_dir = os.path.join(conf['job_dir'], expname)
@@ -115,7 +130,11 @@ def generate_job(kind, config, expname):
     # load configuration file and setup core variables
     conf = load_yaml(config)
     job_dir = os.path.join(conf['job_dir'], expname)
-    exp_base_file = os.path.join(conf["ece_dir"], "scripts", "runtime", "experiment-config-example.yml")
+    if kind == 'OMIP':
+        src_dir = conf['oce_dir']
+    else:
+        src_dir = conf['ece_dir']
+    exp_base_file = os.path.join(src_dir, "scripts", "runtime", "experiment-config-example.yml")
 
     # load base template experiment
     exp_base = load_yaml(exp_base_file)
@@ -141,7 +160,10 @@ def generate_job(kind, config, expname):
         context['model_config']['components'] = list_block(['oifs', 'nemo', 'rnfm', 'xios', 'oasis'])
         context['model_config']['oifs']['grid'] = noparse_block("{{model_config.oifs.all_grids."+conf["resolution"]["oifs"]+"}}")
         context['model_config']['nemo']['grid'] = noparse_block("{{model_config.nemo.all_grids."+conf["resolution"]["nemo"]+"}}")
-    
+    elif kind == 'OMIP':
+        context['model_config']['components'] = list_block(['nemo', 'xios'])
+        context['model_config']['nemo']['grid'] = noparse_block("{{model_config.nemo.all_grids."+conf["resolution"]["nemo"]+"}}")
+
     # setup job block
     context['job']['launch']['method'] = PlainScalarString(conf['launch-method'])
     if conf['launch-method'] != 'slurm-wrapper-taskset':
@@ -167,6 +189,11 @@ def generate_job(kind, config, expname):
                 { 'nodes': 1, 'xios': 1, 'oifs': 126, 'rnfm': 1 },
                 { 'nodes': 1, 'oifs': 38, 'nemo': 90 },
             ]
+        # default one node configuration for OMIP
+        elif kind == "OMIP":
+            exp_base[1]['base.context']['job']['groups'] = [
+                { 'nodes': 1, 'xios': 1, 'nemo': 90 },
+            ]
     else:
         # delete the wrapper-taskset block
         del exp_base[2]
@@ -185,6 +212,11 @@ def generate_job(kind, config, expname):
                 'xios': {'ntasks': 1, 'ntasks_per_node': 1},
                 'rnfm': {'ntasks': 1, 'ntasks_per_node': 1}
             }
+        elif kind == "OMIP":
+            exp_base[1]['base.context']['job'] = {
+                'nemo': {'ntasks': 90, 'ntasks_per_node': 128},
+                'xios': {'ntasks': 1, 'ntasks_per_node': 1}
+            }
 
     # write the file
     yaml_path = os.path.join(job_dir, f'{expname}.yml')
@@ -195,18 +227,18 @@ def generate_job(kind, config, expname):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Generate job configuration for experiments.")
-    parser.add_argument("-k", "--kind", type=str, required=True, help="Type of experiment (e.g., AMIP).")
+    parser.add_argument("-k", "--kind", type=str, required=True, help="Type of experiment (e.g., AMIP, CPLD, OMIP).")
     parser.add_argument("-c","--config", type=str, help="YAML configuration file", default="config.yml")
     parser.add_argument("-e", "--expname", type=str, required=True, help="Experiment name (e.g., aa00).")
     parser.add_argument("--clean", action="store_true", help="Clean up the experiment folder.")
 
     args = parser.parse_args()
-    if args.kind.upper() not in ["AMIP", "CPLD"]:
-        raise ValueError("Invalid experiment type. Choose either 'AMIP' or 'CPLD'.")
+    if args.kind.upper() not in ["AMIP", "CPLD", "OMIP"]:
+        raise ValueError("Invalid experiment type. Choose either 'AMIP', 'CPLD' or 'OMIP'.")
     if len(args.expname) != 4:
         raise ValueError("Experiment name must be 4 characters long.")
 
-    create_folder(args.expname, args.config, args.clean)
+    create_folder(args.kind, args.expname, args.config, args.clean)
     generate_job(args.kind, args.config, args.expname)
-    generate_user_config(args.expname, args.config)
-    create_launch(args.expname, args.config)
+    generate_user_config(args.kind, args.expname, args.config)
+    create_launch(args.kind, args.expname, args.config)
