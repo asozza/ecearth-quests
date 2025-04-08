@@ -9,16 +9,23 @@ import os
 import shutil
 import argparse
 from ruamel.yaml.scalarstring import PlainScalarString
-from ruamel.yaml.comments import TaggedScalar, CommentedSeq
 from yaml_util import load_yaml, save_yaml
+from yaml_util import noparse_block, list_block
 
 def create_folder(expname, config, clean=False):
     """
     Create a new folder for the experiment.
+
+    Args:
+        expname (str): Name of the experiment.
+        config (str): Path to the configuration file.
+        clean (bool): Whether to clean up the existing folder if it exists.
     """
     # create the folder
     conf = load_yaml(config)
     job_dir = os.path.join(conf['job_dir'], expname)
+
+    # if clean is True, remove the existing folder
     if clean:
         if os.path.exists(job_dir):
             shutil.rmtree(job_dir)
@@ -26,10 +33,12 @@ def create_folder(expname, config, clean=False):
         else:
             print(f"No existing job directory to remove: {job_dir}")
 
+    # check if the folder already exists
     if os.path.exists(job_dir):
         raise ValueError(f"Experiment {expname} already exists. Please choose a different name.")
     os.makedirs(job_dir, exist_ok=True)
 
+    # copy the template files
     base_dir = os.path.join(conf["ece_dir"], "scripts", "runtime")
     for directory in ["scriptlib", "templates"]:
         shutil.copytree(os.path.join(base_dir, directory), os.path.join(job_dir, directory), dirs_exist_ok=True)
@@ -39,13 +48,16 @@ def create_folder(expname, config, clean=False):
 def create_launch(expname, config):
     """
     Create a launch bash script for the experiment.
+
+    Args:
+        expname (str): Name of the experiment.
+        config (str): Path to the configuration file.
     """
 
     conf = load_yaml(config)
     job_dir = os.path.join(conf['job_dir'], expname)
     ece_dir = conf["ece_dir"]
     platform = conf["platform"]
-
 
     bash_script = f"""#!/bin/bash
 
@@ -55,11 +67,12 @@ platform={ece_dir}/scripts/platforms/{platform}
 se user-config.yml {expname}.yml ${{platform}} scriptlib/main.yml --loglevel INFO
 """
 
+    # write the file
     script_path = os.path.join(job_dir, f"launch.sh")
     with open(script_path, "w") as f:
         f.write(bash_script)
 
-    # Optional: make it executable (if on Unix)
+    # Make it executable (if on Unix)
     os.chmod(script_path, 0o755)
 
     print(f"Bash script written to: {script_path}")
@@ -118,7 +131,7 @@ def generate_job(kind, config, expname):
     context['job']['slurm']['sbatch']['opts']['time'] = 180
     context['job']['slurm']['sbatch']['opts']['ntasks-per-core'] = 1
 
-    # delete the not wrapper tasket block
+    # delete the not wrapper tasket block: this might change in the future
     del exp_base[1]
 
     # default one node configuration for AMIP
@@ -131,30 +144,10 @@ def generate_job(kind, config, expname):
             { 'nodes': 1, 'oifs': 49, 'nemo': 77 },
         ]
 
+    # write the file
     yaml_path = os.path.join(job_dir, f'{expname}.yml')
     save_yaml(os.path.join(job_dir, f'{expname}.yml'), exp_base)
     print(f"YAML script script written to: {yaml_path}")
-
-def noparse_block(value):
-    """
-    Create a block scalar with the !noparse tag.
-    """
-    return TaggedScalar(value, tag="!noparse", style='"')
-
-def list_block(value):
-    """
-    Create a PlanScalar with a list
-    """
-    return list_compact([PlainScalarString(x) for x in value])
-
-def list_compact(list):
-
-    """
-    Create a compact list
-    """
-    comm = CommentedSeq(list)
-    comm.fa.set_flow_style()
-    return comm
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate job configuration for experiments.")

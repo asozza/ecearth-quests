@@ -6,7 +6,8 @@ Matteo Nurisso (CNR-ISAC, Mar 2024)
 """
 import os
 from ruamel.yaml import YAML
-from ruamel.yaml.comments import CommentedSeq
+from ruamel.yaml.scalarstring import PlainScalarString
+from ruamel.yaml.comments import TaggedScalar, CommentedSeq
 
 def load_yaml(file: str= None, ruamel_type: str = 'rt'):
     """
@@ -59,4 +60,25 @@ def save_yaml(path: str = None, cfg: dict = None, ruamel_type: str = 'rt'):
         yaml.dump(cfg, path)
 
     return None
+
+def noparse_block(value):
+    """
+    Create a block scalar with the !noparse tag.
+    """
+    return TaggedScalar(value, tag="!noparse", style='"')
+
+def list_block(value):
+    """
+    Create a PlanScalar with a list
+    """
+    return list_compact([PlainScalarString(x) for x in value])
+
+def list_compact(list):
+
+    """
+    Create a compact list in CommentedSeq format.
+    """
+    comm = CommentedSeq(list)
+    comm.fa.set_flow_style()
+    return comm
 
