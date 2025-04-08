@@ -9,7 +9,7 @@
 #
 
 # platform of the machine:
-platform: "ecmwf-hpc2020-intel+openmpi"
+platform: "ecmwf-hpc2020-intel+openmpi.yml"
 
 # where do you want to put your job scripts
 job_dir: "/lus/h2resw01/hpcperm/ccpd/ecearth4/jobs"
@@ -25,6 +25,13 @@ ini_dir: "PIZZA-TO-BESET"
 
 # account for billing
 account: "spitsozz"
+
+# schedule settings
+schedule:
+  start: 19900101
+  end: 19910101
+  freq: MONTHLY # DAILY, MONTHLY, YEARLY
+  nlegs: 1 # number of legs
 
 # model resolution
 resolution:

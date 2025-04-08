@@ -9,6 +9,7 @@ import os
 import shutil
 import argparse
 from ruamel.yaml.scalarstring import PlainScalarString
+from ruamel.yaml.comments import CommentedMap
 from yaml_util import load_yaml, save_yaml
 from yaml_util import noparse_block, list_block
 
@@ -21,6 +22,7 @@ def create_folder(expname, config, clean=False):
         config (str): Path to the configuration file.
         clean (bool): Whether to clean up the existing folder if it exists.
     """
+
     # create the folder
     conf = load_yaml(config)
     job_dir = os.path.join(conf['job_dir'], expname)
@@ -44,6 +46,7 @@ def create_folder(expname, config, clean=False):
         shutil.copytree(os.path.join(base_dir, directory), os.path.join(job_dir, directory), dirs_exist_ok=True)
     
     print(f"Created job directory: {job_dir}")
+
 
 def create_launch(expname, config):
     """
@@ -77,8 +80,8 @@ se user-config.yml {expname}.yml ${{platform}} scriptlib/main.yml --loglevel inf
 
     print(f"Bash script written to: {script_path}")
 
-def generate_user_config(expname, config):
 
+def generate_user_config(expname, config):
     """
     Generate a user configuration file for the experiment.
     """
@@ -99,6 +102,14 @@ def generate_user_config(expname, config):
 
 
 def generate_job(kind, config, expname):
+    """
+    Generate a job configuration file for the experiment.
+
+    Args:
+        kind (str): Type of experiment (e.g., AMIP).
+        config (str): Path to the configuration file.
+        expname (str): Name of the experiment.
+    """
 
     # load configuration file and setup core variables
     conf = load_yaml(config)
@@ -113,6 +124,13 @@ def generate_job(kind, config, expname):
 
     # avoid case sensitivity
     kind = kind.upper()
+
+    # adjust schedule settings
+    startdate = conf['schedule']['start']
+    enddate = conf['schedule']['end']
+    freq = conf['schedule']['freq']
+    context['experiment']['schedule']['all'].value = f"DTSTART:{startdate} RRULE:FREQ={freq};UNTIL={enddate}"
+    context['experiment']['schedule']['nlegs'] = conf['schedule']['nlegs']
 
     # Set the experiment name
     if kind == 'AMIP':        
@@ -130,9 +148,10 @@ def generate_job(kind, config, expname):
     context['job']['slurm']['sbatch']['opts']['qos'] = 'np'
     context['job']['slurm']['sbatch']['opts']['time'] = 180
     context['job']['slurm']['sbatch']['opts']['ntasks-per-core'] = 1
-
+    
     # delete the not wrapper tasket block: this might change in the future
     del exp_base[1]
+    exp_base.yaml_set_comment_before_after_key(1, before='\n')
 
     # default one node configuration for AMIP
     if kind == "AMIP":
@@ -149,7 +168,9 @@ def generate_job(kind, config, expname):
     save_yaml(os.path.join(job_dir, f'{expname}.yml'), exp_base)
     print(f"YAML script script written to: {yaml_path}")
 
+
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser(description="Generate job configuration for experiments.")
     parser.add_argument("-k", "--kind", type=str, required=True, help="Type of experiment (e.g., AMIP).")
     parser.add_argument("-c","--config", type=str, help="YAML configuration file", default="config.yml")
@@ -161,6 +182,7 @@ if __name__ == "__main__":
         raise ValueError("Invalid experiment type. Choose either 'AMIP' or 'CPLD'.")
     if len(args.expname) != 4:
         raise ValueError("Experiment name must be 4 characters long.")
+
     create_folder(args.expname, args.config, args.clean)
     generate_job(args.kind, args.config, args.expname)
     generate_user_config(args.expname, args.config)
