@@ -1,10 +1,6 @@
 *.pyc
-epochal/__pycache__
-lobster/__pycache__
-osprey/*/__pycache__
-osprey/__pycache__
+*/__pycache__
+*/*/__pycache__
 *.egg-info/
-osprey/figs
-osprey/nam_*
-
-
+martini/nam_*
+ece4/config.yml
