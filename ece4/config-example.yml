@@ -21,7 +21,7 @@ run_dir: "/lus/h2resw01/scratch/ccpd/ece4"
 ece_dir: "/lus/h2resw01/hpcperm/ccpd/ecearth4/revisions/main"
 
 # where the initial data of ecearth4 are
-ini_dir: "PIZZA-TO-BESET"
+ini_dir: "/ec/res4/hpcperm/itas/data/ece-4-database"
 
 # account for billing
 account: "spitsozz"
@@ -37,3 +37,6 @@ schedule:
 resolution:
   oifs: TL159L91
   nemo: eORCA1L75
+
+# slurm launch method
+launch-method: "slurm-wrapper-taskset" # slurm-hetjob, slurm-mp-taskset, slurm-shell, slurm-wrapper-taskset
