@@ -71,9 +71,9 @@ def list_block(value):
     """
     Create a PlanScalar with a list
     """
-    return list_compact([PlainScalarString(x) for x in value])
+    return _list_compact([PlainScalarString(x) for x in value])
 
-def list_compact(list):
+def _list_compact(list):
 
     """
     Create a compact list in CommentedSeq format.

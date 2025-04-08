@@ -152,7 +152,7 @@ def generate_job(kind, config, expname):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate job configuration for experiments.")
     parser.add_argument("-k", "--kind", type=str, required=True, help="Type of experiment (e.g., AMIP).")
-    parser.add_argument("-c","--config", type=str, help="Type of experiment (e.g., AMIP).", default="config.yml")
+    parser.add_argument("-c","--config", type=str, help="YAML configuration file", default="config.yml")
     parser.add_argument("-e", "--expname", type=str, required=True, help="Experiment name (e.g., aa00).")
     parser.add_argument("--clean", action="store_true", help="Clean up the experiment folder.")
 

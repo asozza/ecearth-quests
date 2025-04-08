@@ -2,16 +2,31 @@
 # please for now do not use bash environment variables
 # (e.g. $HOME) in this file
 #
+# NB: it works only on ATOS HPC!
+#
 # TO CUSTOMIZE THIS FILE, COPY IT AS: config.yml 
 # (untracked by .gitignore)
 #
 
+# platform of the machine:
 platform: "ecmwf-hpc2020-intel+openmpi"
+
+# where do you want to put your job scripts
 job_dir: "/lus/h2resw01/hpcperm/ccpd/ecearth4/jobs"
+
+# main folder where the experiment will be run
 run_dir: "/lus/h2resw01/scratch/ccpd/ece4"
+
+# where the ecearth4 code is
 ece_dir: "/lus/h2resw01/hpcperm/ccpd/ecearth4/revisions/main"
+
+# where the initial data of ecearth4 are
 ini_dir: "PIZZA-TO-BESET"
+
+# account for billing
 account: "spitsozz"
+
+# model resolution
 resolution:
-  oifs: TL63L91
+  oifs: TL159L91
   nemo: eORCA1L75
