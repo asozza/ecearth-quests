@@ -163,6 +163,8 @@ def generate_job(kind, config, expname):
     elif kind == 'OMIP':
         context['model_config']['components'] = list_block(['nemo', 'xios'])
         context['model_config']['nemo']['grid'] = noparse_block("{{model_config.nemo.all_grids."+conf["resolution"]["nemo"]+"}}")
+        del context['model_config']['oifs']
+        del context['model_config']['oasis']
 
     # setup job block
     context['job']['launch']['method'] = PlainScalarString(conf['launch-method'])
