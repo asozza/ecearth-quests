@@ -8,9 +8,10 @@ channels:
   - conda-forge
 
 dependencies:
-  - python>3.9,<3.12
-  - cdo=2.4.0
-  - eccodes>=2.31.0,<2.34.0
+  - python>3.9
+  - cdo
+  - python-cdo
+  - eccodes
   - ipykernel
   - numpy
   - scipy
