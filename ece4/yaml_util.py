@@ -6,9 +6,21 @@ Matteo Nurisso (CNR-ISAC, Mar 2024)
 """
 import os
 from ruamel.yaml import YAML
-from ruamel.yaml.comments import CommentedSeq
+from ruamel.yaml.scalarstring import PlainScalarString
+from ruamel.yaml.comments import TaggedScalar, CommentedSeq
 
-def load_yaml(file: str= None, ruamel_type: str = 'rt'):
+def expand_env_vars(obj):
+    """Recursively expand environment variables in a dictionary or list."""
+    if isinstance(obj, dict):
+        return {k: expand_env_vars(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [expand_env_vars(i) for i in obj]
+    elif isinstance(obj, str):
+        return os.path.expandvars(obj)
+    else:
+        return obj
+
+def load_yaml(file: str= None, ruamel_type: str = 'rt', expand_env: bool = False):
     """
     Load yaml file with ruamel.yaml package
 
@@ -32,33 +44,10 @@ def load_yaml(file: str= None, ruamel_type: str = 'rt'):
     
     cfg = yaml.load(yaml_text)
 
-    if isinstance(cfg, CommentedSeq):
-        cfg = cfg[0]
+    if expand_env:
+        cfg = expand_env_vars(cfg)
 
     return cfg
-
-def modify_rundir(run_dir: str = None, path: str = None):
-    """
-    Modify the run_dir in the yaml file
-    """
-
-    if path is None:
-        raise ValueError('path is None')
-
-    # Open yaml file
-    file = load_yaml(path)
-
-    # Modify rundir
-    try:
-        old_value = file['base.context']['experiment']['run_dir']
-        # print(f'Old value: {old_value}') # Debug purpose
-
-        # modify old_value.value keeping the TaggedScalar
-        file['base.context']['experiment']['run_dir'].value = run_dir
-    except KeyError:
-        raise KeyError('Key not found')
-    
-    return file
 
 
 def save_yaml(path: str = None, cfg: dict = None, ruamel_type: str = 'rt'):
@@ -85,4 +74,25 @@ def save_yaml(path: str = None, cfg: dict = None, ruamel_type: str = 'rt'):
         yaml.dump(cfg, path)
 
     return None
+
+def noparse_block(value):
+    """
+    Create a block scalar with the !noparse tag.
+    """
+    return TaggedScalar(value, tag="!noparse", style='"')
+
+def list_block(value):
+    """
+    Create a PlanScalar with a list
+    """
+    return _list_compact([PlainScalarString(x) for x in value])
+
+def _list_compact(list):
+
+    """
+    Create a compact list in CommentedSeq format.
+    """
+    comm = CommentedSeq(list)
+    comm.fa.set_flow_style()
+    return comm
 
