@@ -20,9 +20,6 @@ run_dir: "${SCRATCH}/ece4"
 # where the ecearth4 code is
 ece_dir: "/lus/h2resw01/hpcperm/ccpd/ecearth4/revisions/main"
 
-# ecearth nemo-only code (beware that a separate compilation is needed!)
-oce_dir: "/ec/res4/hpcperm/itas/src/gitlab/ecearth4-nemo-only"
-
 # where the initial data of ecearth4 are (ensure that cmip6-data is properly loaded)
 ini_dir: "/ec/res4/hpcperm/itas/data/ece-4-database"
 

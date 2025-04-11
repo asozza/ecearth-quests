@@ -22,7 +22,7 @@ from yaml_util import load_yaml, save_yaml
 from yaml_util import noparse_block, list_block
 
 
-def create_folder(kind, expname, config, clean=False):
+def create_folder(expname, config, clean=False):
     """
     Create a new folder for the experiment.
 
@@ -50,17 +50,14 @@ def create_folder(kind, expname, config, clean=False):
     os.makedirs(job_dir, exist_ok=True)
 
     # copy the template files
-    if kind == "OMIP":
-        base_dir = os.path.join(config["oce_dir"], "scripts", "runtime")    
-    else:
-        base_dir = os.path.join(config["ece_dir"], "scripts", "runtime")
+    base_dir = os.path.join(config["ece_dir"], "scripts", "runtime")
     for directory in ["scriptlib", "templates"]:
         shutil.copytree(os.path.join(base_dir, directory), os.path.join(job_dir, directory), dirs_exist_ok=True)
     
     print(f"Created job directory: {job_dir}")
 
 
-def create_launch(kind, expname, config):
+def create_launch(expname, config):
     """
     Create a launch bash script for the experiment.
 
@@ -70,10 +67,7 @@ def create_launch(kind, expname, config):
     """
 
     job_dir = os.path.join(config['job_dir'], expname)
-    if kind == "OMIP":
-        ece_dir = config["oce_dir"]
-    else:
-        ece_dir = config["ece_dir"]
+    ece_dir = config["ece_dir"]
     platform = config["platform"]
 
     bash_script = f"""#!/bin/bash
@@ -95,7 +89,7 @@ se user-config.yml {expname}.yml ${{platform}} scriptlib/main.yml --loglevel inf
     print(f"Bash script written to: {script_path}")
 
 
-def generate_user_config(kind, expname, config):
+def generate_user_config(expname, config):
     """
     Generate a user configuration file for the experiment.
 
@@ -104,11 +98,9 @@ def generate_user_config(kind, expname, config):
         expname (str): Name of the experiment.
         config (str): Path to the configuration file.
     """
+
     # load configuration file 
-    if kind == 'OMIP':
-        src_dir = config['oce_dir']
-    else:
-        src_dir = config['ece_dir']
+    src_dir = config['ece_dir']
 
     # define configuration
     user_config = load_yaml(os.path.join(src_dir, "scripts", "runtime", "user-config-example.yml"))
@@ -135,10 +127,7 @@ def generate_job(kind, config, expname):
 
     # load configuration file and setup core variables
     job_dir = os.path.join(config['job_dir'], expname)
-    if kind == 'OMIP':
-        src_dir = config['oce_dir']
-    else:
-        src_dir = config['ece_dir']
+    src_dir = config['ece_dir']
     exp_base_file = os.path.join(src_dir, "scripts", "runtime", "experiment-config-example.yml")
 
     # load base template experiment
@@ -248,7 +237,7 @@ if __name__ == "__main__":
     # load configuration file
     config = load_yaml(args.config, expand_env=True)
 
-    create_folder(args.kind, args.expname, config, args.clean)
+    create_folder(args.expname, config, args.clean)
     generate_job(args.kind, config, args.expname)
-    generate_user_config(args.kind, args.expname, config)
-    create_launch(args.kind, args.expname, config)
+    generate_user_config(args.expname, config)
+    create_launch(args.expname, config)
