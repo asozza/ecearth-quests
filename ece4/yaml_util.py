@@ -9,7 +9,18 @@ from ruamel.yaml import YAML
 from ruamel.yaml.scalarstring import PlainScalarString
 from ruamel.yaml.comments import TaggedScalar, CommentedSeq
 
-def load_yaml(file: str= None, ruamel_type: str = 'rt'):
+def expand_env_vars(obj):
+    """Recursively expand environment variables in a dictionary or list."""
+    if isinstance(obj, dict):
+        return {k: expand_env_vars(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [expand_env_vars(i) for i in obj]
+    elif isinstance(obj, str):
+        return os.path.expandvars(obj)
+    else:
+        return obj
+
+def load_yaml(file: str= None, ruamel_type: str = 'rt', expand_env: bool = False):
     """
     Load yaml file with ruamel.yaml package
 
@@ -32,6 +43,9 @@ def load_yaml(file: str= None, ruamel_type: str = 'rt'):
         yaml_text = file.read()
     
     cfg = yaml.load(yaml_text)
+
+    if expand_env:
+        cfg = expand_env_vars(cfg)
 
     return cfg
 

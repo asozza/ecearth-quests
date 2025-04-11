@@ -2,7 +2,15 @@
 """
 Simple tool to generate a new EC-Earth4 experiment. This combines editing the default configuration file
 with the generation of a new experiment name, creating a new folder and preparing a "launch" script.
-Some caution is required to edit the YAML CommentedMap.
+Some caution is required to edit the YAML CommentedMap and CommentedSeq objects.
+
+Usage:
+    python generate-job.py -k <experiment_type> -e <experiment_name> [-c <config_file>] [--clean]
+
+    -k, --kind <experiment_type>   Type of experiment (e.g., AMIP, CPLD, OMIP).
+    -e, --expname <experiment_name> Name of the experiment (e.g., aa00).
+    -c, --config <config_file>     Path to the configuration file (default: config.yml).
+    --clean                        Clean up the experiment folder if it exists.
 """
 
 import os
@@ -25,8 +33,8 @@ def create_folder(kind, expname, config, clean=False):
     """
 
     # create the folder
-    conf = load_yaml(config)
-    job_dir = os.path.join(conf['job_dir'], expname)
+   
+    job_dir = os.path.join(config['job_dir'], expname)
 
     # if clean is True, remove the existing folder
     if clean:
@@ -43,9 +51,9 @@ def create_folder(kind, expname, config, clean=False):
 
     # copy the template files
     if kind == "OMIP":
-        base_dir = os.path.join(conf["oce_dir"], "scripts", "runtime")    
+        base_dir = os.path.join(config["oce_dir"], "scripts", "runtime")    
     else:
-        base_dir = os.path.join(conf["ece_dir"], "scripts", "runtime")
+        base_dir = os.path.join(config["ece_dir"], "scripts", "runtime")
     for directory in ["scriptlib", "templates"]:
         shutil.copytree(os.path.join(base_dir, directory), os.path.join(job_dir, directory), dirs_exist_ok=True)
     
@@ -61,13 +69,12 @@ def create_launch(kind, expname, config):
         config (str): Path to the configuration file.
     """
 
-    conf = load_yaml(config)
-    job_dir = os.path.join(conf['job_dir'], expname)
+    job_dir = os.path.join(config['job_dir'], expname)
     if kind == "OMIP":
-        ece_dir = conf["oce_dir"]
+        ece_dir = config["oce_dir"]
     else:
-        ece_dir = conf["ece_dir"]
-    platform = conf["platform"]
+        ece_dir = config["ece_dir"]
+    platform = config["platform"]
 
     bash_script = f"""#!/bin/bash
 
@@ -98,20 +105,19 @@ def generate_user_config(kind, expname, config):
         config (str): Path to the configuration file.
     """
     # load configuration file 
-    conf = load_yaml(config)
     if kind == 'OMIP':
-        src_dir = conf['oce_dir']
+        src_dir = config['oce_dir']
     else:
-        src_dir = conf['ece_dir']
+        src_dir = config['ece_dir']
 
     # define configuration
     user_config = load_yaml(os.path.join(src_dir, "scripts", "runtime", "user-config-example.yml"))
-    user_config[0]['base.context']['experiment']['run_dir'] = noparse_block(conf['run_dir']+"/{{experiment.id}}")
-    user_config[0]['base.context']['experiment']['ini_dir'] =  noparse_block(conf['ini_dir'])
+    user_config[0]['base.context']['experiment']['run_dir'] = noparse_block(config['run_dir']+"/{{experiment.id}}")
+    user_config[0]['base.context']['experiment']['ini_dir'] =  noparse_block(config['ini_dir'])
     user_config[0]['base.context']['experiment']['base_dir'] =  noparse_block(src_dir)
 
     # save the user configuration file
-    job_dir = os.path.join(conf['job_dir'], expname)
+    job_dir = os.path.join(config['job_dir'], expname)
     user_config_file = os.path.join(job_dir, "user-config.yml")
     save_yaml(user_config_file, user_config)
     print(f"User configuration file written to: {user_config_file}")
@@ -128,12 +134,11 @@ def generate_job(kind, config, expname):
     """
 
     # load configuration file and setup core variables
-    conf = load_yaml(config)
-    job_dir = os.path.join(conf['job_dir'], expname)
+    job_dir = os.path.join(config['job_dir'], expname)
     if kind == 'OMIP':
-        src_dir = conf['oce_dir']
+        src_dir = config['oce_dir']
     else:
-        src_dir = conf['ece_dir']
+        src_dir = config['ece_dir']
     exp_base_file = os.path.join(src_dir, "scripts", "runtime", "experiment-config-example.yml")
 
     # load base template experiment
@@ -145,39 +150,39 @@ def generate_job(kind, config, expname):
     kind = kind.upper()
 
     # adjust schedule settings
-    startdate = conf['schedule']['start']
-    enddate = conf['schedule']['end']
-    freq = conf['schedule']['freq']
+    startdate = config['schedule']['start']
+    enddate = config['schedule']['end']
+    freq = config['schedule']['freq']
     context['experiment']['schedule']['all'].value = f"DTSTART:{startdate} RRULE:FREQ={freq};UNTIL={enddate}"
-    context['experiment']['schedule']['nlegs'] = conf['schedule']['nlegs']
+    context['experiment']['schedule']['nlegs'] = config['schedule']['nlegs']
 
     # Set the experiment name
     if kind == 'AMIP':        
         context['model_config']['components'] = list_block(['oifs', 'amipfr', 'xios', 'oasis'])
-        context['model_config']['oifs']['grid'] = noparse_block("{{model_config.oifs.all_grids."+conf["resolution"]["oifs"]+"}}")
+        context['model_config']['oifs']['grid'] = noparse_block("{{model_config.oifs.all_grids."+config["resolution"]["oifs"]+"}}")
         del context['model_config']['nemo']
     elif kind == 'CPLD':
         context['model_config']['components'] = list_block(['oifs', 'nemo', 'rnfm', 'xios', 'oasis'])
-        context['model_config']['oifs']['grid'] = noparse_block("{{model_config.oifs.all_grids."+conf["resolution"]["oifs"]+"}}")
-        context['model_config']['nemo']['grid'] = noparse_block("{{model_config.nemo.all_grids."+conf["resolution"]["nemo"]+"}}")
+        context['model_config']['oifs']['grid'] = noparse_block("{{model_config.oifs.all_grids."+config["resolution"]["oifs"]+"}}")
+        context['model_config']['nemo']['grid'] = noparse_block("{{model_config.nemo.all_grids."+config["resolution"]["nemo"]+"}}")
     elif kind == 'OMIP':
         context['model_config']['components'] = list_block(['nemo', 'xios'])
-        context['model_config']['nemo']['grid'] = noparse_block("{{model_config.nemo.all_grids."+conf["resolution"]["nemo"]+"}}")
+        context['model_config']['nemo']['grid'] = noparse_block("{{model_config.nemo.all_grids."+config["resolution"]["nemo"]+"}}")
         del context['model_config']['oifs']
         del context['model_config']['oasis']
 
     # setup job block
-    context['job']['launch']['method'] = PlainScalarString(conf['launch-method'])
-    if conf['launch-method'] != 'slurm-wrapper-taskset':
+    context['job']['launch']['method'] = PlainScalarString(config['launch-method'])
+    if config['launch-method'] != 'slurm-wrapper-taskset':
         context['job']['launch']['shell'] = CommentedMap()
         context['job']['launch']['shell']['script'] = PlainScalarString('run-srun-multiprog.sh')
 
-    context['job']['slurm']['sbatch']['opts']['account']= conf["account"]
+    context['job']['slurm']['sbatch']['opts']['account']= config["account"]
     context['job']['slurm']['sbatch']['opts']['qos'] = 'np'
     context['job']['slurm']['sbatch']['opts']['time'] = 180
     context['job']['slurm']['sbatch']['opts']['ntasks-per-core'] = 1
     
-    if conf['launch-method'] == 'slurm-wrapper-taskset':
+    if config['launch-method'] == 'slurm-wrapper-taskset':
         # delete the not wrapper-tasket block (this might change in the future)
         del exp_base[1]
         exp_base.yaml_set_comment_before_after_key(1, before='\n')
@@ -239,8 +244,11 @@ if __name__ == "__main__":
         raise ValueError("Invalid experiment type. Choose either 'AMIP', 'CPLD' or 'OMIP'.")
     if len(args.expname) != 4:
         raise ValueError("Experiment name must be 4 characters long.")
+    
+    # load configuration file
+    config = load_yaml(args.config, expand_env=True)
 
-    create_folder(args.kind, args.expname, args.config, args.clean)
-    generate_job(args.kind, args.config, args.expname)
-    generate_user_config(args.kind, args.expname, args.config)
-    create_launch(args.kind, args.expname, args.config)
+    create_folder(args.kind, args.expname, config, args.clean)
+    generate_job(args.kind, config, args.expname)
+    generate_user_config(args.kind, args.expname, config)
+    create_launch(args.kind, args.expname, config)

@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 """
-Simple tool to generate a new EC-Earth4 experiment. This combines editing the default configuration file
-with the generation of a new experiment name, creating a new folder and preparing a "launch" script.
-Some caution is required to edit the YAML CommentedMap.
+Simple tool to duplicate a EC-Earth job. 
+This script duplicates an existing job by copying its directory and renaming the configuration files.
+
+Usage:
+    python duplicate-job.py -i/--expname1 <source_expname> -t/--expname2 <target_expname> -c/--config <config_file>
+
+    -i/--expname1: Name of the source experiment (e.g., aa00).
+    -o/--expname2: Name of the target experiment (e.g., bb00).
+    -c/--config: Path to the configuration file (default: config.yml).
 """
 
 import os
 import shutil
 import argparse
-from ruamel.yaml.scalarstring import PlainScalarString
-from ruamel.yaml.comments import CommentedMap
-from yaml_util import load_yaml, save_yaml
-from yaml_util import noparse_block, list_block
 
+from yaml_util import load_yaml
 
-def duplicate_job(expname1, expname2, config):
+def duplicate_job(expname1, expname2, config, clean=False):
     """
     Duplicate an existing job to create a new one with a different experiment ID.
 
@@ -32,7 +35,11 @@ def duplicate_job(expname1, expname2, config):
     if not os.path.exists(source_dir):
         raise ValueError(f"Source experiment {expname1} does not exist.")
     if os.path.exists(target_dir):
-        raise ValueError(f"Target experiment {expname2} already exists.")
+        if clean:
+            print(f"Cleaning up existing target directory {target_dir}.")
+            shutil.rmtree(target_dir)
+        else:
+            raise ValueError(f"Target experiment {expname2} already exists.")
 
     # Copy the source directory to the target directory
     shutil.copytree(source_dir, target_dir)
@@ -73,11 +80,13 @@ def duplicate_job(expname1, expname2, config):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Duplicate job configuration for experiments.")
-    parser.add_argument("--expname1", type=str, required=True, help="Source experiment name (e.g., aa00).")
-    parser.add_argument("--expname2", type=str, required=True, help="Target experiment name (e.g., bb00).")
+    parser.add_argument("-i", "--expname1", type=str, required=True, help="Source experiment name (e.g., aa00).")
+    parser.add_argument("-o", "--expname2", type=str, required=True, help="Target experiment name (e.g., bb00).")
+    parser.add_argument("-c", "--config", type=str, default="config.yml", help="Path to the configuration file (default: config.yml).")
+    parser.add_argument("--clean", action="store_true", help="Clean up temporary files after duplication.")
 
     args = parser.parse_args()
     if len(args.expname1) != 4 or len(args.expname2) != 4:
         raise ValueError("Experiment names must be 4 characters long.")
 
-    duplicate_job(args.expname1, args.expname2, "config.yml")
+    duplicate_job(args.expname1, args.expname2, args.config, clean=args.clean)

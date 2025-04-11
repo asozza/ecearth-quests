@@ -15,7 +15,7 @@ platform: "ecmwf-hpc2020-intel+openmpi.yml"
 job_dir: "/lus/h2resw01/hpcperm/ccpd/ecearth4/jobs"
 
 # main folder where the experiment will be run
-run_dir: "/lus/h2resw01/scratch/ccpd/ece4"
+run_dir: "${SCRATCH}/ece4"
 
 # where the ecearth4 code is
 ece_dir: "/lus/h2resw01/hpcperm/ccpd/ecearth4/revisions/main"
