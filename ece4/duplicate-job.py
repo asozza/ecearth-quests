@@ -26,7 +26,7 @@ def duplicate_job(expname1, expname2, config, clean=False):
         expname2 (str): Name of the target experiment.
         config (str): Path to the configuration file.
     """
-    conf = load_yaml(config)
+    conf = load_yaml(config, expand_env=True)
     job_dir = conf['job_dir']
 
     source_dir = os.path.join(job_dir, expname1)
