@@ -78,7 +78,7 @@ def modify_single_grib(inputfile, outputfile, variables, myfunction, spectral=Fa
         print(f"Modifying GRIB file {inputfile} using function {myfunction.__name__}")
 
         # open the netcdf and modify it
-        field = xr.open_dataset(netcdf,  engine="netcdf4")
+        field = xr.open_dataset(netcdf,  engine="netcdf4", decode_times=False)
         field = myfunction(field, var=variables, **kwargs)
         
         # Save to a temporary file and remove
@@ -135,9 +135,13 @@ def replace_field(inputfile, singlefile, outputfile, variable):
     subprocess.run([
         "grib_copy", "-w", where_expr,  # condition: where shortName is NOT t
         inputfile, "filtered.grib"], check=True)
-    subprocess.run(["grib_copy", "filtered.grib", singlefile, outputfile], check=True)
+    if os.path.exists("filtered.grib"):
+        subprocess.run(["grib_copy", "filtered.grib", singlefile, outputfile], check=True)
+        os.remove("filtered.grib")
+    else:
+        shutil.copyfile(singlefile, outputfile)
     os.remove(singlefile)
-    os.remove("filtered.grib")
+    
 
 def unpack_grib_file(inputfile, tmpfile):
     """
