@@ -17,6 +17,7 @@ import argparse
 import shutil
 import cdo
 from utils import extract_grid_info, ecmwf_grid
+from utils import unpack_grib_file, repack_grib_file
 cdo = cdo.Cdo()
 cdo.debug = True
 
@@ -56,6 +57,7 @@ TMPDIR = '/ec/res4/scratch/ccpd/tmpic_cy48'
 
 # CDO grib2 options
 GRIB2="-f grb2 --eccodes"
+GRIB1="-f grb1 --eccodes"
 
 
 #---------------------------#
@@ -82,7 +84,10 @@ def generate_spectral_conditions(OIFS_IC, spectral, TMPDIR):
     This is done with a clean spectral truncation with cdo.
     Orography is reliable and should not produce Gibbs oscillations.
     """
-    # 
+    # NEW PROCEDURE FOR CY48
+    # in cycle all is grb2 so no problem with this
+    print("Truncating spectral file ICMSHECE4INIT to", spectral, "harmonics")
+    cdo.sp2sp(spectral, input=f"{OIFS_IC}/ICMSHECE4INIT", output=f"{TMPDIR}/ICMSHECE4INIT", options=GRIB2)
     
     # OLD PROCEDURE FOR CY43
     # The file has to be split in two since orography is GRIB1 and the rest is GRIB2
@@ -94,10 +99,6 @@ def generate_spectral_conditions(OIFS_IC, spectral, TMPDIR):
     #    os.remove(grib2file)
     #    os.remove(grib1file)
 
-    # NEW PROCEDURE FOR CY48
-    # in cycle all is grb2 so no problem with this
-    print("Truncating spectral file ICMSHECE4INIT to", spectral, "harmonics")
-    cdo.sp2sp(spectral, input=f"{OIFS_IC}/ICMSHECE4INIT", output=f"{TMPDIR}/ICMSHECE4INIT", options=GRIB2)
 
 def generate_gridpoint_conditions(OIFS_IC, target_spectral, TMPDIR, clean=True):
     """
@@ -115,20 +116,21 @@ def generate_gridpoint_conditions(OIFS_IC, target_spectral, TMPDIR, clean=True):
         gridfile = f"grids/{target_spectral}.txt"
         inputfile = f"{OIFS_IC}/{file}"
         # Split GRIB messages in GRIB1 and GRIB2 to avoid CDO problems in cy48
-        subprocess.run(["grib_copy", "-w", "edition=1", inputfile, f"{TMPDIR}/grib_file1.grb"], check=True)
-        subprocess.run(["grib_copy", "-w", "edition=2", inputfile, f"{TMPDIR}/grib_file2.grb"], check=True)
+        grib1, grib2 = unpack_grib_file(inputfile, f'{TMPDIR}/{file}')
 
         # interpolate
-        for grbfile in ["grib_file1", "grib_file2"]:
-            cdo.remapnn(gridfile, 
-                        input=f"{TMPDIR}/{grbfile}.grb", 
-                        output=f"{TMPDIR}/{grbfile}_remap.grb", options="--eccodes")
-            
+        for grbfile in [grib1, grib2]:
+            if os.path.exists(grbfile):
+                cdo.remapnn(gridfile, 
+                            input=grbfile,
+                            output=f"{grbfile}.remap", options="--eccodes")   
         # pack them together
-        subprocess.run(["grib_copy", f"{TMPDIR}/grib_file1_remap.grb", f"{TMPDIR}/grib_file2_remap.grb", f"{TMPDIR}/{file}"], check=True)
+        repack_grib_file(f"{grib1}.remap", f"{grib2}.remap", f"{TMPDIR}/{file}")
         if clean:
-            os.remove(f"{TMPDIR}/{grbfile}.grb")
-            os.remove(f"{TMPDIR}/{grbfile}_remap.grb")
+            for file in [grib1, grib2]:
+                if os.path.exists(file):
+                    os.remove(file)
+                    os.remove(f"{file}.remap")
 
 def generate_boundary_conditions(OIFS_BC, target_grid, climate_version, TMPDIR, BC_TGT, ecmwf_name):
     """
