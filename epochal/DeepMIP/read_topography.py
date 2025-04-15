@@ -39,56 +39,40 @@ def read_topo(path):
 
     return data
 
-def create_landsea_mask(data, path):
-    """
-    Create land-sea mask, bathymetry, and orography from the topography data.
-    Args:
-        data (xarray.Dataset): Topography data.       
-    """
 
-    # Create land-sea mask
-    data['landsea_mask'] = (data['topo'] > 0).astype(int)
-
-    # Save the results
-    data.to_netcdf(os.path.join(path, "landsea_mask.nc"))
-
-def create_opensea_mask(data, path):
+def create_new_topo(data, path, flag):
     """
-    Create open sea mask from the topography data.
+    Create a new topographic variable (land-sea mask, opensea mask, bathymetry, orography)
+    from the topography data.
+
     Args:
         data (xarray.Dataset): Topography data.
-    """
-    # Create open sea mask
-    data['mask_opensea'] = (data['topo'] < 0).astype(int)
-
-    # Save the results
-    data.to_netcdf(os.path.join(path, "mask_opensea.nc"))
-
-def create_bathymetry(data, path):
-    """
-    Create bathymetry from the topography data.
-    Args:
-        data (xarray.Dataset): Topography data.
+        path (str): Path to save the output file.
+        flag (str): Type of variable to create. One of:
+                    "mask_landsea", "mask_opensea", "bathymetry", "orography".
     """
 
-    # Create bathymetry
-    data['bathymetry'] = -data['topo'].where(data['topo'] < 0)
+    if flag == "mask_landsea":
+        data["landsea_mask"] = (data["topo"] > 0).astype(int)
+        filename = "landsea_mask.nc"
 
-    # save the results
-    data.to_netcdf(os.path.join(path, "bathymetry.nc"))
+    elif flag == "mask_opensea":
+        data["mask_opensea"] = (data["topo"] < 0).astype(int)
+        filename = "mask_opensea.nc"
 
-def create_orography(data, path):
-    """
-    Create orography from the topography data.
-    Args:
-        data (xarray.Dataset): Topography data.
-    """
+    elif flag == "bathymetry":
+        data["bathymetry"] = -data["topo"].where(data["topo"] < 0)
+        filename = "bathymetry.nc"
 
-    # Create orography
-    data['orography'] = data['topo'].where(data['topo'] > 0)
+    elif flag == "orography":
+        data["orography"] = data["topo"].where(data["topo"] > 0)
+        filename = "orography.nc"
 
-    # save the results
-    data.to_netcdf(os.path.join(path, "orography.nc"))
+    else:
+        raise ValueError(f"Unknown flag: {flag}")
+
+    # Save to NetCDF
+    data.to_netcdf(os.path.join(path, filename))
 
 
 if __name__ == "__main__":
@@ -101,10 +85,8 @@ if __name__ == "__main__":
     # Read the topography data
     data = read_topo(args.path)
 
-    # Create new data with land-sea mask, bathymetry, and orography
-    create_landsea_mask(data, args.path)
-    create_opensea_mask(data, args.path)
-    create_bathymetry(data, args.path)
-    create_orography(data, args.path)
-    print(f"New topography data saved to: f{args.path}")
+    # Create new data variables and save them
+    for flag in ["mask_landsea", "mask_opensea", "bathymetry", "orography"]:
+        create_new_topo(data, args.path, flag)
+        print(f"New topography data saved to: {os.path.join(args.path, f'{flag}.nc')}")
     
