@@ -104,6 +104,7 @@ if __name__ == "__main__":
         create_new_topo(folder_name, flag)
         print(f"New topography data saved to: {os.path.join(folder_name, f'{flag}.nc')}")
     
-    cdo.remapcon("N32", os.path.join(folder_name, f"landsea_mask.nc"), os.path.join(folder_name, f"landsea_mask_remap.nc"))
-    cdo.remapcon("N32", os.path.join(folder_name, f"orography.nc"), os.path.join(folder_name, f"orography_remap.nc"))
+    
+    cdo.remapcon("N32", input=os.path.join(folder_name, f"landsea_mask.nc"), output=os.path.join(folder_name, f"landsea_mask_remap.nc"))
+    cdo.remapcon("N32", input=os.path.join(folder_name, f"orography.nc"), output=os.path.join(folder_name, f"orography_remap.nc"))
     print("All files remapped to N32 grid.")
