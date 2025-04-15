@@ -44,7 +44,7 @@ def read_topo(filename):
     return data
 
 
-def create_new_topo(data, path, flag):
+def create_new_topo(path, flag):
     """
     Create a new topographic variable (land-sea mask, opensea mask, bathymetry, orography)
     from the topography data.
