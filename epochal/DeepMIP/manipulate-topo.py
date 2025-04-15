@@ -60,26 +60,31 @@ def create_new_topo(path, flag):
     ds = read_topo(args.path)
 
     if flag == "mask_landsea":
-        data["landsea_mask"] = (ds["topo"] > 0).astype(int)
+        ds["landsea_mask"] = (ds["topo"] > 0).astype(int)
         filename = "landsea_mask.nc"
 
     elif flag == "mask_opensea":
-        data["mask_opensea"] = (ds["topo"] < 0).astype(int)
+        ds["mask_opensea"] = (ds["topo"] < 0).astype(int)
         filename = "mask_opensea.nc"
 
     elif flag == "bathymetry":
-        data["bathymetry"] = -ds["topo"].where(data["topo"] < 0)
+        ds["bathymetry"] = -ds["topo"].where(ds["topo"] < 0)
         filename = "bathymetry.nc"
 
     elif flag == "orography":
-        data["orography"] = ds["topo"].where(data["topo"] > 0)
+        ds["orography"] = ds["topo"].where(ds["topo"] > 0)
         filename = "orography.nc"
 
     else:
         raise ValueError(f"Unknown flag: {flag}")
 
+
+    # Delete 'topo' from the dataset
+    if "topo" in ds:
+        del ds["topo"]
+    
     # Save to NetCDF
-    data.to_netcdf(os.path.join(path, filename))
+    ds.to_netcdf(os.path.join(path, filename))
 
 
 if __name__ == "__main__":
