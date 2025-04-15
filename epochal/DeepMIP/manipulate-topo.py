@@ -68,11 +68,11 @@ def create_new_topo(path, flag):
         filename = "mask_opensea.nc"
 
     elif flag == "bathymetry":
-        ds["bathymetry"] = -ds["topo"].where(ds["topo"] < 0)
+        ds["bathymetry"] = -ds["topo"].where(ds["topo"] < 0, 0)
         filename = "bathymetry.nc"
 
     elif flag == "orography":
-        ds["orography"] = ds["topo"].where(ds["topo"] > 0)
+        ds["orography"] = ds["topo"].where(ds["topo"] > 0, 0)
         filename = "orography.nc"
 
     else:
