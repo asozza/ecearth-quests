@@ -22,7 +22,7 @@ import argparse
 import xarray as xr
 
 
-def read_topo(path):
+def read_topo(filename):
     """
     Read topography data from a specified path and create land-sea mask, bathymetry, and orography.
 
@@ -30,12 +30,12 @@ def read_topo(path):
         path (str): Path to the folder containing the topography files.
     """
 
-    # Check if the folder exists
-    if not os.path.isdir(args.path):
-        raise FileNotFoundError(f"The specified folder does not exist: {args.path}")
+    # Check if the file exists
+    if not os.path.isfile(filename):
+        raise FileNotFoundError(f"File {filename} not found.")
 
     # Read the topography data
-    data = xr.open_dataset(os.path.join(path, "topo.nc"))
+    data = xr.open_dataset(filename)
 
     return data
 
@@ -78,15 +78,20 @@ def create_new_topo(data, path, flag):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Manipulate topography files. ")
-    parser.add_argument("-p", "--path", type=str, required=True, help="Path to the folder containing the topography files.")
+    parser.add_argument("-p", "--path", type=str, required=True, help="Path to the topography files.")
 
     args = parser.parse_args()
+
+    # Extract folder name and file name
+    folder_name = os.path.dirname(args.path)
+    file_name = os.path.basename(args.path)
+    print(f"Folder name: {folder_name}, File name: {file_name}")
 
     # Read the topography data
     data = read_topo(args.path)
 
     # Create new data variables and save them
     for flag in ["mask_landsea", "mask_opensea", "bathymetry", "orography"]:
-        create_new_topo(data, args.path, flag)
-        print(f"New topography data saved to: {os.path.join(args.path, f'{flag}.nc')}")
+        create_new_topo(data, folder_name, flag)
+        print(f"New topography data saved to: {os.path.join(folder_name, f'{flag}.nc')}")
     
