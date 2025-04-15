@@ -20,10 +20,10 @@ Alessandro Sozza (CNR-ISAC, April 2025)
 import os
 import argparse
 import xarray as xr
-import Cdo as cdo
+from cdo import Cdo
 
 # Initialize CDO
-cdo = cdo.Cdo()
+cdo = Cdo()
 
 
 def read_topo(filename):
