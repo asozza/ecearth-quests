@@ -3,6 +3,7 @@ import re
 import os
 import tempfile
 import shutil
+import numpy as np
 import xarray as xr
 import subprocess
 from cdo import Cdo
@@ -176,6 +177,29 @@ def repack_grib_file(grib1, grib2, outputfile, clean=True):
         for file in [grib1, grib2]:
             if os.path.exists(file):
                 os.remove(file)
+
+def modify_value(field, var, newvalue):
+    """
+    Modify a field in the GRIB file setting it to a constant
+    """
+    for v in var:
+        if v in field.variables:
+            print(f"Modifying variable {v} in the field")
+            field[v].data = np.full(field[v].shape, newvalue)
+    return field
+
+def replace_value(field, var, newfield):
+    """
+    Replace the field in a dataset with a dataarray
+    """
+    if 'time' not in newfield.dims:
+        newfield = newfield.expand_dims('time', axis=0)
+
+    for v in var:
+        if v in field.variables:
+            print(f"Replacing variable {v} in the field")
+            field[v].data = newfield.data
+    return field
 
 
 def ecmwf_grid(kind):
