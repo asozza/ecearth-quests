@@ -126,6 +126,11 @@ def replace_field(inputfile, singlefile, outputfile, variable):
     Replace a field in a GRIB file using grib_copy.
     """
 
+    # allow for replacament
+    if inputfile == outputfile:
+        shutil.move(inputfile, "tmp.grib")
+        inputfile = "tmp.grib"
+
     if os.path.exists(outputfile):
         os.remove(outputfile)
     if os.path.exists("filtered.grib"):
@@ -194,6 +199,8 @@ def replace_value(field, var, newfield):
     """
     if 'time' not in newfield.dims:
         newfield = newfield.expand_dims('time', axis=0)
+
+    newfield = newfield.transpose('time', 'lat', 'lon')
 
     for v in var:
         if v in field.variables:

@@ -6,7 +6,7 @@ from cdo import Cdo
 from utils import modify_single_grib, truncate_grib_file
 from utils import modify_value, replace_value
 from utils import extract_grid_info, spectral2gaussian
-from utils import GRIB2
+from utils import GRIB2, NC4
 cdo = Cdo()
 
 class EoceneOIFS():
@@ -36,6 +36,10 @@ class EoceneOIFS():
         # options
         self.resolution = resolution
         self.startdate = startdate
+
+        # interpolate toward oifs
+        kind, spectral, _ = extract_grid_info(self.resolution)
+        self.gaussian = spectral2gaussian(spectral, kind)
 
         # defining directories
         self.idir_init = os.path.join(self.idir, 'oifs', resolution, startdate)
@@ -101,15 +105,12 @@ class EoceneOIFS():
         # Save to NetCDF
         ds.to_netcdf(filename)
 
-        # interpolate toward oifs
-        kind, spectral, _ = extract_grid_info(self.resolution)
-        gaussian = spectral2gaussian(spectral, kind)
 
         if flag in ["landsea_mask", "orography"]:
             if os.path.exists(os.path.join(self.herold, f"{flag}_remap.nc")):
                 os.remove(os.path.join(self.herold, f"{flag}_remap.nc"))
             cdo.remapcon(
-                f"N{gaussian}",
+                f"N{self.gaussian}",
                 input=filename,
                 output=os.path.join(self.herold, f"{flag}_remap.nc"))
             return os.path.join(self.herold, f"{flag}_remap.nc")
@@ -265,7 +266,7 @@ class EoceneOIFS():
             outputfile=output_spectral,
         )
 
-    def create_init(self, landsea):
+    def create_init(self, landsea, tvh, tvl):
         """
         Create the ICMGGECE4INIT data for the Eocene OIFS.
         Replace landsea mask
@@ -273,6 +274,8 @@ class EoceneOIFS():
 
         Args:
             landsea (xarray.DataArray): Land-sea mask data to be used for the ICMGE data.
+            tvh (xarray.DataArray): Vegetation data for high vegetation.
+            tvl (xarray.DataArray): Vegetation data for low vegetation.
         """
 
         input_surface = os.path.join(self.idir_init, 'ICMGGECE4INIT')
@@ -281,17 +284,35 @@ class EoceneOIFS():
         # erase all subgrid orography
         modify_single_grib(
             inputfile=input_surface,
-            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT_temp1'),
-            variables=['sdor', 'anor', 'isor', 'slor', 'cl', 'chnk', 'tvh', 'tvl','cvh', 'cvl'],
+            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            variables=['sdor', 'anor', 'isor', 'slor', 'cl', 'chnk', 'cvh', 'cvl'],
             spectral=False,
             myfunction=modify_value,
             newvalue=0.  
         )
 
+        modify_single_grib(
+            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            variables=['tvh'],
+            spectral=False,
+            myfunction=replace_value,
+            newfield=tvh
+        )
+
+        modify_single_grib(
+            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            variables=['tvl'],
+            spectral=False,
+            myfunction=replace_value,
+            newfield=tvl
+        )
+
         # erase all subgrid orography
         modify_single_grib(
-            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT_temp1'),
-            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT_temp2'),
+            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
             variables=['slt'],
             spectral=False,
             myfunction=modify_value,
@@ -300,7 +321,7 @@ class EoceneOIFS():
 
         # update the land sea mask
         modify_single_grib(
-            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT_temp2'),
+            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
             outputfile=output_surface,
             variables=['lsm'],
             spectral=False,
@@ -325,6 +346,70 @@ class EoceneOIFS():
             myfunction=modify_value,
             newvalue=0.  
         )
+
+    
+    def prepare_vegetation(self):
+        """"
+        Create the ICMGG vegetation data for the Eocene OIFS.
+        Replace the vegetation data with the one from the Herold data.
+        Set the vegetation type to 0 for all types.
+        Perform a mapping from present-day initial conditions
+        """
+
+
+        herold_file = os.path.join(self.herold, "herold_etal_eocene_biome_1x1.nc")
+        herold_remap = cdo.remapnn(
+            f"N{self.gaussian}", 
+            input=herold_file, 
+            output=os.path.join(self.herold, "herold_etal_eocene_biome_1x1_N32.nc")
+        )
+            
+        icmgg_file = os.path.join(self.idir_init, "ICMGGECE4INIT")
+        if os.path.exists(os.path.join(self.herold, "ICMGG.nc")):
+            os.remove(os.path.join(self.herold, "ICMGG.nc"))
+        icmgg_remap = cdo.setgridtype(
+            "regularnn", 
+            input=icmgg_file, 
+            output=os.path.join(self.herold ,"ICMGG.nc"),
+            options=NC4
+        )
+
+        herold = xr.open_dataset(herold_remap)
+        icmgg = xr.open_dataset(icmgg_remap)
+
+        biome_dict = {'tvh': {}, 'tvl': {}}
+        for vegtype in ["tvh", "tvl"]:
+            for i in range(1, 11):
+                vegid = icmgg[vegtype].where(herold["prei_biome_hp"] == i).values
+                vegid = vegid[~np.isnan(vegid)]
+                unique, counts = np.unique(vegid, return_counts=True)
+                if unique.size>0:
+                    biome_dict[vegtype][i] = int(unique[np.argmax(counts)])
+                else:
+                    biome_dict[vegtype][i] = None
+
+        eocene_icmgg = icmgg[['tvh', 'tvl', 'cvh', 'cvl']]
+        for vegtype in ["tvh", "tvl"]:
+            eocene_icmgg[vegtype] = eocene_icmgg[vegtype]*0
+            for i in range(1, 11):
+                eocene_icmgg[vegtype] = xr.where(
+                    herold['eocene_biome_hp'] == i,
+                    biome_dict[vegtype][i],
+                    eocene_icmgg[vegtype])
+        
+        for vegtype in ["cvh", "cvl"]:
+            eocene_icmgg[vegtype] = eocene_icmgg[vegtype]*0
+
+        if os.path.exists(os.path.join(self.odir_init, "ICMGG_vegetation.nc")):
+            os.remove(os.path.join(self.odir_init, "ICMGG_vegetation.nc"))
+        eocene_icmgg.to_netcdf(
+            os.path.join(self.odir_init, "ICMGG_vegetation.nc")
+        )
+
+        return os.path.join(self.odir_init, "ICMGG_vegetation.nc")
+
+
+
 
 
 
