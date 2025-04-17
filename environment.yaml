@@ -9,8 +9,9 @@ channels:
 
 dependencies:
   - python>3.9
-  - cdo=2.4.0
-  - eccodes>=2.31.0,<2.34.0
+  - cdo
+  - python-cdo
+  - eccodes
   - ipykernel
   - numpy
   - scipy
