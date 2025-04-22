@@ -42,13 +42,8 @@ def duplicate_job(expname1, expname2, config, clean=False):
             raise ValueError(f"Target experiment {expname2} already exists.")
 
     # Copy the source directory to the target directory
-    shutil.copytree(source_dir, target_dir)
-
-    # Remove specific files from the target directory
-    for file_to_remove in [f"{expname1}.log", "sbatch.tmp.yml"]:
-        file_path = os.path.join(target_dir, file_to_remove)
-        if os.path.exists(file_path):
-            os.remove(file_path)
+    shutil.copytree(source_dir, target_dir, ignore=shutil.ignore_patterns(
+        'ecsbatch.log.*',  f"{expname1}.log", "sbatch.tmp.yml" ))
 
     # Rename the YAML configuration file
     source_yaml = os.path.join(target_dir, f"{expname1}.yml")
