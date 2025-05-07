@@ -8,11 +8,11 @@ import subprocess
 import yaml
 
 BASEDIR='/home/ccpd/scratch/ece4'
-ROLLBACK_DATE = '20001001'  # YYYYMMDD format
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Rollback script for resetting experiment data.")
     parser.add_argument("expname", type=str, help="Name of the experiment (e.g., 'ABT4').")
+    parser.add_argument("--years", type=int, default=5, help="Number of years to rollback.")
     parser.add_argument("--clean", action="store_true", help="Enable cleaning and restoring from backup.")
     parser.add_argument("--backup", action="store_true", help="Create a backup of the files before modifying them.")
     parser.add_argument("--dry", action="store_true", help="Print commands without executing them.")
@@ -24,9 +24,23 @@ def read_current_date_from_yaml(yaml_file):
         data = yaml.safe_load(file)
     # Extract the date from the YAML structure
     current_date = data["base.context"]["experiment"]["schedule"]["leg"]["start"]
-    print(f"Current date from YAML: {current_date}")
-    return current_date.strftime("%Y%m%d")
+    return current_date
     #return datetime.strptime(current_date, "%Y-%m-%d %H:%M:%S").strftime("%Y%m%d")
+
+def compute_adjusted_date(current_date, rollback_years):
+    """
+    Computes the adjusted date
+    """
+    # Convert the dates to datetime objects
+    yyyy = int(datetime.strftime(current_date, "%Y"))
+    mm = datetime.strftime(current_date, "%m")
+
+    # Calculate the difference
+    newyear = yyyy - rollback_years
+    adjusted_date = datetime.strptime(f'{newyear}{mm}01', "%Y%m%d")
+    #adjusted_date = current_date_dt - delta + timedelta(days=1)
+    # Return the adjusted date in YYYYMMDD format
+    return adjusted_date
 
 def create_backup(file_path):
     """Creates a backup of the specified file."""
@@ -44,23 +58,33 @@ def clean_and_restore(file_path):
     else:
         print(f"No backup found for {file_path}. Skipping...")
 
-def rollback(expname, clean, backup, dry):
+def rollback(expname, clean, backup, dry, rollback_years):
     DIR = os.path.join(BASEDIR, expname)
     yaml_file = os.path.join(DIR, "leginfo.yml")
     current_date = read_current_date_from_yaml(yaml_file)
-    
+    print(f"Current date: {current_date}")
 
-    # Convert dates to datetime objects
-    date1 = datetime.strptime(ROLLBACK_DATE, "%Y%m%d")
-    date2 = datetime.strptime(current_date, "%Y%m%d")
+    #original_date = subprocess.run(['cdo', '-s', 'showdate', f"{DIR}/ICMGG{expname}INIUA"], capture_output=True, text=True)
+    #original_date = original_date.stdout.strip()
+    #original_date = datetime.strptime(original_date, "%Y-%m-%d")
+    #print(f"Original date: {original_date}")
 
-    if date1 > date2:
-        print(f"Rollback date {ROLLBACK_DATE} is later than current date {current_date}.")
+    adjusted_date = compute_adjusted_date(current_date, rollback_years=rollback_years)
+    print(f"Adjusted date: {adjusted_date}")
+
+    if adjusted_date > current_date:
+        print(f"Rollback date {adjusted_date} is later than current date {current_date}.")
         return
 
     # Compute the difference in seconds and days
-    diff_sec = int((date2 - date1).total_seconds())
-    diff_days = (date2 - date1).days
+    diff_sec = int((current_date - adjusted_date).total_seconds())
+    diff_days = (current_date - adjusted_date).days
+
+    CSTEP = diff_sec // 3600
+    CTIME = f"{diff_days:08d}0000"
+    print(f"CSTEP: {CSTEP} ; CTIME={CTIME}")
+
+    exit()
 
     grib_filenames = [
         f"{DIR}/ICMGG{expname}INIUA",
@@ -91,16 +115,14 @@ def rollback(expname, clean, backup, dry):
 
     for filename in grib_filenames:
         old_file = f"{filename}.old"
-        print(f"grib_set -s dataDate={ROLLBACK_DATE} {old_file} {filename}")
+        print(f"grib_set -s dataDate={adjusted_date} {old_file} {filename}")
         if os.path.exists(filename):
             if not dry:
                 os.rename(filename, old_file)
-                subprocess.run(["grib_set", "-s", f"dataDate={ROLLBACK_DATE}", old_file, filename])
+                subprocess.run(["grib_set", "-s", f"dataDate={adjusted_date}", old_file, filename])
 
     # Modify OIFS restart control file
     print("Modifying the old rcf file...")
-    CSTEP = diff_sec // 3600
-    CTIME = f"{diff_days:08d}0000"
 
     rcf_file = f"{DIR}/rcf"
     if os.path.exists(rcf_file):
@@ -132,4 +154,4 @@ def rollback(expname, clean, backup, dry):
 
 if __name__ == "__main__":
     args = parse_arguments()
-    rollback(args.expname, args.clean, args.backup, args.dry)
+    rollback(args.expname, args.clean, args.backup, args.dry, args.years)
