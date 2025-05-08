@@ -96,7 +96,8 @@ def modify_single_grib(inputfile, outputfile, variables, myfunction, spectral=Fa
             cdo.remapnn(inputfile, input=netcdf, output=singlefile, options=grib)
 
         replace_field(inputfile, singlefile, outputfile, variables)
-
+    else: 
+        print(f'{inputfile} does not exist!')
 
 def truncate_grib_file(inputfile, outputfile, variables, orig=63, trunc=1):
     """
