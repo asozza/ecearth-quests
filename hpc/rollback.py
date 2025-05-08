@@ -96,10 +96,10 @@ def rollback(expname, restore, backup, dry, rollback_years):
     current_date = read_current_date_from_yaml(yaml_file)
     print(f"Current date: {current_date}")
 
-    #original_date = subprocess.run(['cdo', '-s', 'showdate', f"{DIR}/ICMGG{expname}INIUA"], capture_output=True, text=True)
-    #original_date = original_date.stdout.strip()
-    #original_date = datetime.strptime(original_date, "%Y-%m-%d")
-    #print(f"Original date: {original_date}")
+    original_date = subprocess.run(['cdo', '-s', 'showdate', f"{DIR}/ICMGG{expname}INIUA"], capture_output=True, text=True)
+    original_date = original_date.stdout.strip()
+    original_date = datetime.strptime(original_date, "%Y-%m-%d")
+    print(f"Original date: {original_date}")
 
     adjusted_date = compute_adjusted_date(current_date, rollback_years=rollback_years)
     print(f"Adjusted date: {adjusted_date}")
@@ -109,28 +109,36 @@ def rollback(expname, restore, backup, dry, rollback_years):
         return
 
     # Compute the difference in seconds and days
+    #diff_sec = (current_date-original_date).total_seconds() - int((current_date - adjusted_date).total_seconds())
+    #diff_days = (current_date-original_date).days - (current_date - adjusted_date).days
     diff_sec = int((current_date - adjusted_date).total_seconds())
     diff_days = (current_date - adjusted_date).days
 
     CSTEP = diff_sec // 3600
     CTIME = f"{diff_days:08d}0000"
+    CSTOP = f"d{(diff_days+365):07d}"
+    NRESTS = CSTEP + 8760
     print(f"CSTEP: {CSTEP} ; CTIME={CTIME}")
-
+    print(f"CSTOP: {CSTOP} ; NRESTS={NRESTS}")
     grib_filenames = [
         f"{DIR}/ICMGG{expname}INIUA",
         f"{DIR}/ICMSH{expname}INIT",
         f"{DIR}/ICMGG{expname}INIT"
     ]
+    rcf = f"{DIR}/rcf"
+    namelist = os.path.join(DIR, "templates", "namelist.oifs.j2")
+
 
     if backup:
         print("Creating backups...")
         for grib_file in grib_filenames:
             create_backup(grib_file)
-        create_backup(f"{DIR}/rcf")
+        create_backup(rcf)
         for file in os.listdir(DIR):
             if file.startswith("srf"):
                 file_path = os.path.join(DIR, file) 
                 create_backup(file_path)
+        create_backup(namelist)
         print("Backups created successfully.")
         return
 
@@ -138,7 +146,8 @@ def rollback(expname, restore, backup, dry, rollback_years):
     print("Cleaning and restoring from backup...")
     for grib_file in grib_filenames:
         clean_and_restore(grib_file)
-    clean_and_restore(f"{DIR}/rcf")
+    clean_and_restore(rcf)
+    clean_and_restore(namelist)
     for file in os.listdir(DIR):
         if file.startswith("srf") and file.endswith(".backup"):
             file_path = os.path.join(DIR, file)
@@ -159,11 +168,7 @@ def rollback(expname, restore, backup, dry, rollback_years):
         print("Restoration completed successfully.")
         return
 
-
-
-
     print("Changing the date of the initial conditions...")
-
     adjusted_date_str = adjusted_date.strftime("%Y%m%d")
     for filename in grib_filenames:
         old_file = f"{filename}.old"
@@ -175,10 +180,9 @@ def rollback(expname, restore, backup, dry, rollback_years):
                 os.remove(old_file)
     # Modify OIFS restart control file
     print("Modifying the old rcf file...")
-
-    rcf_file = f"{DIR}/rcf"
-    if os.path.exists(rcf_file):
-        with open(rcf_file, "r") as file:
+    
+    if os.path.exists(rcf):
+        with open(rcf, "r") as file:
             rcf_content = file.read()
 
         # Sostituzione per CSTEP
@@ -196,8 +200,20 @@ def rollback(expname, restore, backup, dry, rollback_years):
         )
         print(rcf_content)
         if not dry:
-            with open(rcf_file, "w") as file:
+            with open(rcf, "w") as file:
                 file.write(rcf_content)
+
+    print("Modyfing the namelist template...")
+    # Pattern to find the jinja-style expression and replace it with 'd0000730'
+    cstop_pattern = r"d\{\{\s*\"%07d\"\s*%\s*\(experiment\.schedule\.leg\.end\s*-\s*experiment\.schedule\.start\)\.days\s*\}\}"
+    nrests_pattern = r"\{\{\s*\(24\*3600\*\(experiment\.schedule\.leg\.end\s*-\s*experiment\.schedule\.start\)\.days\s*/\s*model_config\.oifs\.grid\.dt\)\s*\|\s*int\s*\}\}"
+
+    with open(namelist, 'r') as file:
+        content = file.read()
+    content = re.sub(cstop_pattern, CSTOP, content)
+    content = re.sub(nrests_pattern, str(NRESTS), content)
+    with open(namelist, 'w') as file:
+        file.write(content)
 
     print("Renaming the restart files...")
     for file in os.listdir(DIR):
