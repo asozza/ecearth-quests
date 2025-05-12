@@ -216,7 +216,7 @@ def rollback(expname, restore, backup, dry, rollback_years):
         file.write(content)
 
     print("Renaming the restart files...")
-    for file in os.listdir(DIR):
+    for file in sorted(os.listdir(DIR)):
         if CTIME in file:
             print(f"Removing {DIR}/{file}...")
             os.remove(os.path.join(DIR, file))
