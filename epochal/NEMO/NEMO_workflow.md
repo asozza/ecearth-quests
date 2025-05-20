@@ -109,11 +109,12 @@ Modify `src/domain_zgr.F90` to manually open or close specific straits.
 
 Here below, you can find an example modification where Panama and Thailand are connected to the main land and Gibrailtair and Red Sea straits are openend. Of course, this has to be manually verified for each new configuration according to the user needs.
 
-```fortran                                            ! =====================
+```fortran                                           
+                                                     ! =====================
 IF( cp_cfg == "paleorca" .AND. jp_cfg == 2 ) THEN    ! PALEORCA configuration
     !                                                 ! =====================   
     !
-    ii0 = 135 ;     ii1 = 135
+    ii0 = 134 ;     ii1 = 134
     ij0 = 131 ;     ij1 = 131
     DO ji = mi0(ii0), mi1(ii1)
       DO jj = mj0(ij0), mj1(ij1)
@@ -123,8 +124,8 @@ IF( cp_cfg == "paleorca" .AND. jp_cfg == 2 ) THEN    ! PALEORCA configuration
     IF(lwp) WRITE(numout,*)
     IF(lwp) WRITE(numout,*) '      paleorca: Gibraltar strait open at i=',ii0,' j=',ij0
 
-    ii0 = 156    ;   ii1 = 156                   ! Bab el mandeb Strait open
-    ij0 = 119    ;   ij1 = 119                   ! (Thomson, Ocean Modelling, 1995)
+    ii0 = 155    ;   ii1 = 156                   ! Bab el mandeb Strait open
+    ij0 = 118    ;   ij1 = 118                   ! (Thomson, Ocean Modelling, 1995)
     DO ji = mi0(ii0), mi1(ii1)
       DO jj = mj0(ij0), mj1(ij1)
         bathy(ji,jj) = 137._wp
@@ -134,19 +135,19 @@ IF( cp_cfg == "paleorca" .AND. jp_cfg == 2 ) THEN    ! PALEORCA configuration
   IF(lwp) WRITE(numout,*) '             paleorca: Bab el Mandeb strait open at i=',ii0,' j=',ij0
 
   !
-  ii0 = 95    ;   ii1 = 97                   ! Panama strait closing
-  ij0 = 116    ;   ij1 = 116                 !
-  DO ji = mi0(ii0), mi1(ii1)
-    DO jj = mj0(ij0), mj1(ij1)
-        bathy(ji,jj) = 0._wp
-    END DO
-  END DO
-  IF(lwp) WRITE(numout,*)
-  IF(lwp) WRITE(numout,*) '             paleorca: Panama strait closed at i=',ii0,' j=',ij0
+  !ii0 = 93    ;   ii1 = 95                   ! Panama strait closing
+  !ij0 = 116    ;   ij1 = 116                 !
+  !DO ji = mi0(ii0), mi1(ii1)
+  !  DO jj = mj0(ij0), mj1(ij1)
+  !      bathy(ji,jj) = 0._wp
+  !  END DO
+  !END DO
+  !IF(lwp) WRITE(numout,*)
+  !IF(lwp) WRITE(numout,*) '             paleorca: Panama strait closed at i=',ii0,' j=',ij0
 
                 !
-  ii0 = 5    ;   ii1 = 5                   ! Thailand closing
-  ij0 = 117    ;   ij1 = 117               !
+  ii0 = 3    ;   ii1 = 3                   ! Thailand closing
+  ij0 = 113    ;   ij1 = 114                 !
   DO ji = mi0(ii0), mi1(ii1)
     DO jj = mj0(ij0), mj1(ij1)
         bathy(ji,jj) = 0._wp
@@ -154,12 +155,16 @@ IF( cp_cfg == "paleorca" .AND. jp_cfg == 2 ) THEN    ! PALEORCA configuration
   END DO
   IF(lwp) WRITE(numout,*)
   IF(lwp) WRITE(numout,*) '             paleorca: Thailand closed at i=',ii0,' j=',ij0
-END IF
+
 ```
 
 > 🔎 Grid indices in `ncview` differ from Fortran by +2, so adjust accordingly.
 
-Of course, after each modification you need to recompile the tool. 
+Of course, after each modification you need to recompile the tool. A shortcut for this
+
+```bash
+./maketools -m ecearth -n DOMAINcfg;  cd DOMAINcfg;  ./make_domain_cfg.exe ; cd ..
+```
 
 ### Run DOMAINcfg
 
