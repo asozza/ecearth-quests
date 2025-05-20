@@ -307,7 +307,7 @@ You need to clone rdy2cpl locally, and install in your env the development versi
 pip install -e . 
 ```
 
-> This will change once we can get this merged into them main
+> This will change once we can get this merged into them main, there is PR in the repo https://github.com/uwefladrich/rdy2cpl/pull/38
 
 Then, you have to edit one single file `/rdy2cpl/rdy2cpl/grids/base/nemo/orca.py` adding the new configuration in the tuple of definitions. ORCA grids are all the same so they should work smoothly. 
 
