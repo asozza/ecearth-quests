@@ -87,6 +87,18 @@ There is a `namelist_cfg` namelist which has to be adapted to work with such con
 - `nn_bathy = 1` -> ingest an external bathymetry file (already remapped on the target grid)
 - `cn_bath`, `cn_lon`, `cn_lat` -> variable names that must match your bathymetry file
 
+Furthermore, you need to adapt the number of points and the name of the configuration
+
+```fortran
+   cp_cfg      =  "paleorca"   !  name of the configuration
+   jp_cfg      =       2   !  resolution of the configuration
+   jpidta      =     180   !  1st lateral dimension ( >= jpi )
+   jpjdta      =     174   !  2nd    "         "    ( >= jpj )
+   jpkdta      =      31   !  number of levels      ( >= jpk )
+   Ni0glo      =     180   !  1st dimension of global domain --> i =jpidta
+   Nj0glo      =     174   !  2nd    -                  -    --> j  =jpjdta
+```
+
 ## 🧪 4. Customize Bathymetry (optional)
 
 Modify `src/domain_zgr.F90` to manually open or close specific straits. 
