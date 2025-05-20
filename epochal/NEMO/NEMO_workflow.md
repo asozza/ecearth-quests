@@ -1,0 +1,170 @@
+# 🧭 NEMO Bathymetry and Grid Setup Workflow
+
+This guide outlines the procedure for creating a new NEMO configuration starting from a custom coordinates file, using the `DOMAINcfg` tool. This short guide assumes you have a coordinates file that can be used as a starting point. In our case, this will the `paleorca` configuration. 
+
+> ⚠️ The workflow assumes NEMO v4.2 and EC-Earth environment.
+
+---
+
+## 📦 Tools and Repositories
+
+- **DOMAINcfg Tool** (for generating the domain):
+  https://forge.nemo-ocean.eu/nemo/nemo/-/tree/main/tools/DOMAINcfg
+- **NEMO Documentation** (v4.2.0 Appendix):  
+  https://zenodo.org/records/6334656
+- **EC-Earth GitHub Tools (e.g., bounds script)**:  
+  https://github.com/DestinE-Climate-DT/AQUA/blob/orca-coordinates.nc/cli/orca-grids/orca_bounds_new.py
+- **Final maskutil generation**:  
+  https://github.com/asozza/ecearth-quests/blob/main/epochal/NEMO/orca2_create.py
+
+---
+
+- Verify that the coordinates file has the proper cell bounds so that it can be used as target interpolation. 
+
+## 🛠 1. Compile `DOMAINcfg`
+
+
+```bash
+cd NEMO/tools
+./maketools -m ecearth -n DOMAINcfg
+```
+
+This produces the executable:
+
+```bash
+./DOMAINcfg/make_domain_cfg.exe
+```
+
+---
+
+## ⚙️ 2. Prepare the Input Files
+
+- **Coordinates file**: Must be in `coordinates.nc`. For convenience, copy from an existing `domain_cfg.nc` and ensure required fields are present.
+- **Bathymetry file**: Must match the grid of the coordinates file.
+  - **No time dimension** allowed.
+  - Example interpolation:
+    ```bash
+    cdo remapnn,coords_new.nc \
+        -setgrid,/path/to/source.nc \
+        -selname,bathy_metry,nav_lon,nav_lat \
+        /path/to/eORCA1/domain_cfg.nc \
+        PALEORCA_bathy_metry_fromeORCA1.nc
+    ```
+
+---
+
+## 🧾 3. Edit `namelist_cfg`
+
+```fortran
+&namcfg
+   ln_read_cfg = .false.
+   cn_fcoord   = "coordinates.nc"
+   nn_bathy    = 1
+   cn_topo     = "PALEORCA_bathy_metry_fromeORCA1.nc"
+   cn_bath     = "bathy_metry"
+   cn_lon      = "nav_lon"
+   cn_lat      = "nav_lat"
+/
+```
+
+- `ln_read_cfg = .false.` → tells NEMO to generate a new domain from provided inputs
+- `nn_bathy = 1` → ingest an external bathymetry file (already on the target grid)
+- `cn_bath`, `cn_lon`, `cn_lat` → must match your bathymetry file
+
+---
+
+## 🧪 4. Customize Bathymetry (optional)
+
+Modify `domain_zgr.F90` to manually open or close specific straits. Example for opening the Gibraltar strait:
+
+```fortran
+IF( cp_cfg == "paleorca" .AND. jp_cfg == 2 ) THEN
+   ii0 = 135 ; ii1 = 135
+   ij0 = 131 ; ij1 = 131
+   DO ji = mi0(ii0), mi1(ii1)
+      DO jj = mj0(ij0), mj1(ij1)
+         bathy(ji,jj) = 284._wp
+      END DO
+   END DO
+   IF(lwp) WRITE(numout,*) 'paleorca: Gibraltar strait open at i=',ii0,' j=',ij0
+END IF
+```
+
+> 🔎 Grid indices in `ncview` differ from Fortran by +2, so adjust accordingly.
+
+---
+
+## ▶️ 5. Run DOMAINcfg
+
+```bash
+mpirun -np 1 ./make_domain_cfg.exe
+```
+
+This creates `domain_cfg.nc`.
+
+Rename dimension to match EC-Earth expectations:
+
+```bash
+ncrename -d nav_lev,z domain_cfg.nc
+```
+
+---
+
+## 🧱 6. Generate `mesh_mask.nc`
+
+You need to run a short NEMO simulation to generate `mesh_mask.nc`.
+
+### On HPC (e.g., ATOS HPC2020), load necessary modules:
+
+```bash
+module reset
+module load prgenv/intel intel/2021.4.0 intel-mkl/19.0.5 hpcx-openmpi/2.9.0
+module load hdf5-parallel/1.12.2 netcdf4-parallel/4.9.1 ecmwf-toolbox/2023.04.1.0
+
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$NETCDF4_PARALLEL_DIR/lib:$ECCODES_DIR/lib:$HDF5_DIR/lib:$HPCPERM/ecearth4/revisions/main/sources/oasis3-mct-5.2/arch_ecearth/lib
+```
+
+### Run experiment:
+
+- Copy `domain_cfg.nc` and a `namcouple` into the `EXP00` folder of a NEMO experiment.
+- Modify `namelist_cfg` to match your grid and input files.
+- Run the model. It should crash quickly, but it will output `mesh_mask.nc`.
+
+---
+
+## 🎯 7. Create `maskutil.nc`
+
+Use the provided Python script to generate the final mask:
+
+```bash
+python orca2_create.py
+```
+
+You can find the script here:
+https://github.com/asozza/ecearth-quests/blob/main/epochal/NEMO/orca2_create.py
+
+---
+
+## 💡 Tips & Troubleshooting
+
+- Ensure that your bathymetry and coordinates are on the **same grid**.
+- Interpolation from high-resolution bathymetry using `nn_bathy = 2` is still not fully functional.
+- If issues arise during interpolation, ensure the coordinates file has **bounds** (can be generated using AQUA script).
+- Remember to strip out 3D variables and dummy/mask variables from the `coordinates.nc`.
+
+---
+
+## 🗂 Files Summary
+
+| File | Description |
+|------|-------------|
+| `coordinates.nc` | Target grid (can copy from ORCA domain_cfg) |
+| `PALEORCA_bathy_metry_fromeORCA1.nc` | Bathymetry interpolated to target grid |
+| `namelist_cfg` | Controls behavior of DOMAINcfg |
+| `domain_cfg.nc` | Output domain file |
+| `mesh_mask.nc` | Generated by running NEMO |
+| `maskutil.nc` | Final mask file, created by `orca2_create.py` |
+
+---
+
+## 🧑‍🔬 Contributors
