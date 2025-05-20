@@ -1,0 +1,11 @@
+# Default tuning parameters (read by tuning_ensemble.py)
+RPRCON: 0.0014
+ENTRORG: 0.00175
+DETRPEN: 7.5e-05
+ENTRDD: 0.0003
+RMFDEPS: 0.3
+RVICE: 0.13
+RLCRITSNOW: 2.0e-05
+RSNOWLIN2: 0.03
+RCLDIFF: 6.0e-06
+RCLDIFF_CONVI: 10.0

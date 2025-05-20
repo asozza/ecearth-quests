@@ -115,6 +115,38 @@ def generate_user_config(expname, config):
     print(f"User configuration file written to: {user_config_file}")
 
 
+def add_tuning_section(config, context):
+    """
+    Adds custom tuning parameters directly into the jobscript.
+    """
+
+    print('Changing tuning parameters!')
+
+    if 'tuning' not in config:
+        raise ValueError('Tuning section not found in config!')
+    
+    if 'tuning' not in context['model_config']['oifs']:
+        context['model_config']['oifs']['tuning'] = dict()
+
+    namelists = ['namcumf', 'namcldp']
+    parlist = dict()
+    parlist['namcumf'] = ['RPRCON', 'ENTRORG', 'DETRPEN', 'ENTRDD', 'RMFDEPS']
+    parlist['namcldp'] = 'RVICE RLCRITSNOW RSNOWLIN2 RCLDIFF RCLDIFF_CONVI'.split()
+ 
+    params = config['tuning']
+
+    for namls in namelists:
+        if any([par in params for par in parlist[namls]]):
+            context['model_config']['oifs']['tuning'][namls] = dict()
+
+        for parnam in parlist[namls]:
+            if parnam in params:
+                print(f'Changing {parnam} to: {params[parnam]}')
+                context['model_config']['oifs']['tuning'][namls][parnam] = params[parnam]
+    
+    return context
+
+
 def generate_job(kind, config, expname):
     """
     Generate a job configuration file for the experiment.
@@ -159,6 +191,23 @@ def generate_job(kind, config, expname):
         context['model_config']['nemo']['grid'] = noparse_block("{{model_config.nemo.all_grids."+config["resolution"]["nemo"]+"}}")
         del context['model_config']['oifs']
         del context['model_config']['oasis']
+
+    if 'tuning' in config:
+        context = add_tuning_section(config, context)
+    
+    if 'forcing' in config:
+        if 'cmip' not in context['experiment']['forcing'] or context['experiment']['forcing']['cmip'] is None:
+            context['experiment']['forcing']['cmip'] = dict()
+            context['experiment']['forcing']['cmip']['fixyear'] = -1
+
+        if config['forcing'] == 'historical':
+            context['experiment']['forcing']['cmip']['fixyear'] = -1
+        elif config['forcing'] == 'preindustrial':
+            context['experiment']['forcing']['cmip']['fixyear'] = 1850
+        elif isinstance(config['forcing'], int):
+            context['experiment']['forcing']['cmip']['fixyear'] = config['forcing']
+        else:
+            raise ValueError('forcing not understood, use one of preindustrial, historical or a custom year')
 
     # setup job block
     context['job']['launch']['method'] = PlainScalarString(config['launch-method'])
