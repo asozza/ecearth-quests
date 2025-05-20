@@ -193,13 +193,14 @@ This creates `domain_cfg.nc`. Manual inspection to `bathy_metry` and `top_level`
 
 ## 3. Generate the `maskutil.nc`
 
-You need to run a short NEMO simulation to generate `mesh_mask.nc`.
+You  will need to run a short NEMO simulation to generate `mesh_mask.nc`. This can be done by running a specific preconfigured experiments which is available if you compiled EC-Earth.
 
 
 ### Run a test experiment to produce the `mesh_mask.nc`
 
-There is a test expeirment where nemo is linked and compiled in `sources/nemo-4.2/cfgs/ECEARTH/EXP00`
-You will need:
+There is a test experiment where NEMO is linked and compiled and is available in `sources/nemo-4.2/cfgs/ECEARTH/EXP00`
+
+However, you will need:
 
 - linking/copying the `domain_cfg.nc` 
 - modifying the `namelist_cfg` so that it points to the domain file,
