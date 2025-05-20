@@ -158,7 +158,7 @@ IF( cp_cfg == "paleorca" .AND. jp_cfg == 2 ) THEN    ! PALEORCA configuration
 
 ```
 
-> 🔎 Grid indices in `ncview` differ from Fortran by +2, so adjust accordingly.
+> 🔎 Grid indices in `ncview` differ from Fortran by +2, so adjust accordingly. However, a lot of manual tuning is required. 
 
 Of course, after each modification you need to recompile the tool. A shortcut for this
 
@@ -281,6 +281,30 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$NETCDF4_PARALLEL_DIR/lib:$ECCODES_DIR/l
 ```
 
 > ⚠️ The oasis libraries are required by NEMO and should be modified according to your EC-Erth installation path
+
+
+### Update rdy2cpl
+
+The creation of a new ORCA grid will require an adaptation of both the EC-Earth scripts and the rdy2cpl ones. 
+
+You need to clone rdy2cpl locally, and install in your env the development version 
+
+```
+pip install -e . 
+```
+
+> This will change once we can get this merged into them main
+
+Then, you have to edit one single file `/rdy2cpl/rdy2cpl/grids/base/nemo/orca.py` adding the new configuration in the tuple of definitions. ORCA grids are all the same so they should work smoothly. 
+
+### Modify the EC-Earth script
+
+The new configuration has to be introduced in the EC-Earth script engine configuration 
+There area few files that has to be modified:
+
+- `ece_couple_grids.yml`: create the grid definitions for the coupling
+- `config_nemo.yml`: add the info on the grid
+- `config_oasis.yml`: add the info for the coupling frequency
 
 
 ## Useful links
