@@ -1,10 +1,10 @@
 # 🧭 NEMO PALEORCA2 setup workflow
 
-This guide outlines the procedure for creating a new NEMO configuration starting from a custom coordinates file, in this specific case the `PALEORCA2` configuration, using the `DOMAINcfg` tool. This short guide assumes you have a coordinates file that can be used as a starting point. In our case, this will the `paleorca` configuration. 
+This guide outlines the procedure for creating a new NEMO configuration starting from a custom coordinates file, in this specific case the `PALEORCA2` configuration, using the `DOMAINcfg` tool. This short guide assumes you have a coordinates file that can be used as a starting point. In our case, this will name as `paleorca` configuration for NEMO codes. 
 
 > ⚠️ The workflow assumes NEMO v4.2 and EC-Earth environment.
 
-### Necessary modules (optional for ATOS HPC2020)
+### Necessary modules on HPC2020
 
 This modules are reccommended to run the NEMO tools and the short nemo run (see after). Load them in your environment. 
 
@@ -17,6 +17,8 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$NETCDF4_PARALLEL_DIR/lib:$ECCODES_DIR/l
 ```
 
 > ⚠️ The oasis libraries are required by NEMO and should be modified according to your EC-Erth installation path
+
+---
 
 ## 1. Preprocessing
 
@@ -317,6 +319,17 @@ There area few files that has to be modified:
 - `config_nemo.yml`: add the info on the grid
 - `config_oasis.yml`: add the info for the coupling frequency
 
+
+---
+
+### Useful data on HPC2020
+
+The full set of data produced with PALEORCA (present-day), including weights, is available at `/lus/h2resw01/hpcperm/ccpd/ECE4-DATA/nemo`
+
+A folder `/lus/h2resw01/hpcperm/ccpd/EPOCHAL` includes most of the data produced so far. The ORCA grids, for all configuraitons tested so far, both  `mesh_mask.nc` and grid files with cell bounds is available at: `/lus/h2resw01/hpcperm/ccpd/EPOCHAL/ORCA`
+
+The original coordinates file from IPSL, as well as the one with one with reduced halo and the one with bounds, is available at: 
+`/lus/h2resw01/hpcperm/ccpd/EPOCHAL/PALEORCA-coords`
 
 ---
 
