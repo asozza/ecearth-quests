@@ -35,9 +35,9 @@ The options for staggering is set to `F` mostly because `paleorca` is an F-grid 
 It is then important to produce an interpolated bathymetry to the target coordinate. This is done in our case starting from the eORCA1 bathymetry. Of course, in case of paleoclimate simulations, an appropriate bathymetry file is required. 
 
 
->  Please notice that the bathymetry is considered to be positive, so if you use an orography file you need to be flip the signs
+> ⚠️ Please notice that the bathymetry is considered to be positive, so if you use an orography file you need to be flip the signs
 
->  Another issue is that original eORCA domain file might not have appropriate bounds for remapping. this has to be generated or retrieve for the occasion, the `orca_bounds_new.py` file can be used as well as any other experiment output. 
+> ⚠️ Another issue is that original eORCA domain file might not have appropriate bounds for remapping. this has to be generated or retrieve for the occasion, the `orca_bounds_new.py` file can be used as well as any other experiment output. 
 
 
 ```bash
@@ -59,6 +59,13 @@ Compile the domain tool, available in `sources/nemo-4.2/tools`
 ```bash
 ./maketools -m ecearth -n DOMAINcfg
 ```
+
+In case you need to make a complete compilation from scratch, you can run a make clean with
+
+```bash
+./maketools -m ecearth -n DOMAINcfg clean
+```
+
 
 ### Modify the namelist
 
@@ -84,9 +91,9 @@ There is a `namelist_cfg` namelist which has to be adapted to work with such con
 
 Modify `src/domain_zgr.F90` to manually open or close specific straits. 
 
-> Please notice that such modification has to be made for both the full and the partial vertical coordinates. The one currently used is the block under `ln_zps`, which is for partial coordinates
+> ⚠️ Please notice that such modification has to be made for both the full and the partial vertical coordinates. The one currently used is the block under `ln_zps`, which is for partial coordinates
 
-> Good policy is to set the if so that it works only for paleorca configuration
+> ⚠️ Good policy is to set the if so that it works only for paleorca configuration
 
 Here below, you can find an example modification where Panama and Thailand are connected to the main land and Gibrailtair and Red Sea straits are openend. Of course, this has to be manually verified for each new configuration according to the user needs.
 
@@ -127,7 +134,7 @@ IF( cp_cfg == "paleorca" .AND. jp_cfg == 2 ) THEN    ! PALEORCA configuration
 
                 !
   ii0 = 5    ;   ii1 = 5                   ! Thailand closing
-  ij0 = 117    ;   ij1 = 117                 !
+  ij0 = 117    ;   ij1 = 117               !
   DO ji = mi0(ii0), mi1(ii1)
     DO jj = mj0(ij0), mj1(ij1)
         bathy(ji,jj) = 0._wp
@@ -145,7 +152,7 @@ Of course, after each modification you need to recompile the tool.
 ### Run DOMAINcfg
 
 ```bash
-mpirun -np 1 ./make_domain_cfg.exe
+./make_domain_cfg.exe
 ```
 
 This creates `domain_cfg.nc`. Manual inspection to `bathy_metry` and `top_level` is required to verify that everything worked as expected.
@@ -256,7 +263,7 @@ module load hdf5-parallel/1.12.2 netcdf4-parallel/4.9.1 ecmwf-toolbox/2023.04.1.
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$NETCDF4_PARALLEL_DIR/lib:$ECCODES_DIR/lib:$HDF5_DIR/lib:$HPCPERM/ecearth4/revisions/main/sources/oasis3-mct-5.2/arch_ecearth/lib
 ```
 
-> The oasis libraries are required by NEMO and should be modified according to your EC-Erth installation path
+> ⚠️ The oasis libraries are required by NEMO and should be modified according to your EC-Erth installation path
 
 
 ## Useful links
