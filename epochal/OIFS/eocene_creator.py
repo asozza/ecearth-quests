@@ -2,6 +2,7 @@
 import os
 import xarray as xr
 import numpy as np
+import pandas as pd
 from cdo import Cdo
 from utils import modify_single_grib, truncate_grib_file
 from utils import modify_value, replace_value
@@ -128,70 +129,169 @@ class EoceneOIFS():
         else:
             return filename
 
-    def create_sic(self, value=0.0):
-        """
-        Create sea ice data for the Eocene OIFS.
+    #def create_sic(self, value=0.0):
+     #   """
+     #   Create sea ice data for the Eocene OIFS.
         
-        Args:
-            value (float): Value to set for sea ice data.
-        """
+     #   Args:
+     #       value (float): Value to set for sea ice data.
+     #   """
         # Create sea ice data
-        icefield = xr.open_dataset(
-            os.path.join(self.idir_amip, 'siconcbcs_input4MIPs_SSTsAndSeaIce_CMIP_PCMDI-AMIP-1-1-3_gn_187001-201706.nc'))
-        icefield['siconcbcs'] = icefield['siconcbcs']*value
-        outfile = os.path.join(
-            self.odir_amip, 'siconcbcs_input4MIPs_SSTsAndSeaIce_CMIP_PCMDI-AMIP-1-1-3_gn_187001-201706.nc')
-        if os.path.exists(outfile):
-            os.remove(outfile)
-        icefield.to_netcdf(outfile)
+     #   icefield = xr.open_dataset(
+     #       os.path.join(self.idir_amip, 'siconcbcs_input4MIPs_SSTsAndSeaIce_CMIP_PCMDI-AMIP-1-1-3_gn_187001-201706.nc'))
+     #   icefield['siconcbcs'] = icefield['siconcbcs']*value
+     #   outfile = os.path.join(
+     #       self.odir_amip, 'siconcbcs_input4MIPs_SSTsAndSeaIce_CMIP_PCMDI-AMIP-1-1-3_gn_187001-201706.nc')
+     #   if os.path.exists(outfile):
+     #       os.remove(outfile)
+     #   icefield.to_netcdf(outfile)
 
-    def create_sst(self, A=25, OFFSET=20, T0=5):
+    #def create_sst(self, A=25, OFFSET=20, T0=5):
 
+     #   """
+     #   Generate a seasonal SST latitudinal pattern and save it to a netCDF file.
+     #   Broadcasts the pattern to match the original SST data shape.
+     #   The pattern is a cosine function of latitude with a phase offset for seasonal cycle
+     #   Parameters:
+     #   - A: Amplitude of the latitudinal SST pattern.
+     #   - OFFSET: Phase offset in degree for the seasonal pattern.
+     #   - T0: Mean temperature in Celcius.
+     #   """
+     #   inputfile = os.path.join(
+     #       self.idir_amip, 
+     #       'tosbcs_input4MIPs_SSTsAndSeaIce_CMIP_PCMDI-AMIP-1-1-3_gn_187001-201706.nc'
+     #   )
+     #   outputfile = os.path.join(
+     #       self.odir_amip, 
+     #       'tosbcs_input4MIPs_SSTsAndSeaIce_CMIP_PCMDI-AMIP-1-1-3_gn_187001-201706.nc'
+     #   )
+     #   sstfield = xr.open_dataset(inputfile)
+     #   sstfield['tosbcs'].shape
+     #   lons = sstfield['lon'].values
+     #   lats = sstfield['lat'].values
+     #   lon2d, lat2d = np.meshgrid(lons, lats)
+
+        # Sinusoidal parameters
+     #   A = 25        # Amplitude in degrees Celsius
+     #   #B = 5      # Amplitude in degrees Celsius
+     #   #beta = 45    # Phase shift in degrees
+     #   k_lat = np.pi / 180    # frequency in lat direction
+        #k_lon = np.pi / 180 * 4    # frequency in lon direction
+     #   T0 = 5       # Mean temperature
+     #   OFFSET = 20
+
+     #   seasonal = np.cos(np.linspace(0,2*np.pi,num=13))[:-1]* OFFSET
+
+        # Create sinusoidal SST pattern
+     #   sst_pattern = []
+     #   for phasing in seasonal:
+     #       sst_pattern.append(A * np.pow(np.cos(k_lat * lat2d + np.pi/180* phasing), 2) + T0) #+ B * np.sin(k_lon * lon2d + np.pi/180*beta) + T0
+     #   sst_stack = np.stack(sst_pattern, axis=0)
+     #   stacksize = sstfield['tosbcs'].shape[0]
+     #   sst_broadcast = np.tile(sst_stack, ((stacksize+11)//12, 1, 1))[:stacksize]
+     #   sstfield['tosbcs'].data = sst_broadcast
+     #   if os.path.exists(outputfile):
+     #       os.remove(outputfile)
+     #   sstfield.to_netcdf(outputfile)
+    
+    def create_sst(self, A=25, OFFSET=20, T0=5, threshold_seaice=-1.5):
         """
-        Generate a seasonal SST latitudinal pattern and save it to a netCDF file.
-        Broadcasts the pattern to match the original SST data shape.
-        The pattern is a cosine function of latitude with a phase offset for seasonal cycle
+        Generate an idealized zonal mean SST using a cosine^2 latitudinal profile
+        and save it to NetCDF in the EC-Earth AMIP format.
+        
         Parameters:
-        - A: Amplitude of the latitudinal SST pattern.
-        - OFFSET: Phase offset in degree for the seasonal pattern.
-        - T0: Mean temperature in Celcius.
+            A (float): Amplitude of SST latitudinal variation
+            OFFSET (float): Seasonal modulation amplitude
+            T0 (float): Base temperature (°C)
+            threshold_seaice (float): SST threshold for SIC masking
         """
+
         inputfile = os.path.join(
-            self.idir_amip, 
-            'tosbcs_input4MIPs_SSTsAndSeaIce_CMIP_PCMDI-AMIP-1-1-3_gn_187001-201706.nc'
+          self.idir_amip, 
+          'tosbcs_input4MIPs_SSTsAndSeaIce_CMIP_PCMDI-AMIP-1-1-3_gn_187001-201706.nc'
         )
         outputfile = os.path.join(
             self.odir_amip, 
-            'tosbcs_input4MIPs_SSTsAndSeaIce_CMIP_PCMDI-AMIP-1-1-3_gn_187001-201706.nc'
+            'tosbcs_input4MIPs_IZM_SSTsAndSeaIce_CMIP_PCMDI-AMIP-1-1-3_gn_187001-201706.nc'
         )
-        sstfield = xr.open_dataset(inputfile)
-        sstfield['tosbcs'].shape
-        lons = sstfield['lon'].values
-        lats = sstfield['lat'].values
-        lon2d, lat2d = np.meshgrid(lons, lats)
+        
+        # Load the dataset
+        sst = xr.open_dataset("/home/ecme3497/hpcperm/ece4-database/amip-forcing/tosbcs_input4MIPs_SSTsAndSeaIce_CMIP_PCMDI-AMIP-1-1-3_gn_187001-201706.nc")
 
-        # Sinusoidal parameters
-        A = 25        # Amplitude in degrees Celsius
-        #B = 5      # Amplitude in degrees Celsius
-        #beta = 45    # Phase shift in degrees
-        k_lat = np.pi / 180    # frequency in lat direction
-        #k_lon = np.pi / 180 * 4    # frequency in lon direction
-        T0 = 5       # Mean temperature
-        OFFSET = 20
+        # Calculatin monthly mean
+        # Subset the data to 2007-2017
+        sst_sel = sst.sel(time=slice("2007-01-01", "2017-12-31"))
+        # Compute the monthly climatology (mean of all Januaries, Februaries, etc.)
+        monthly_clim = sst_sel.groupby("time.month").mean(dim="time")
+        # Replace the 'month' coordinate with a proper datetime time coordinate 
+        # Let's create artificial dates (e.g., year 2000) for a single idealized year
+        new_time = pd.date_range("2000-01-01", periods=12, freq="MS") # Monthly start dates
+        # Assign this new time coordinate
+        monthly_clim = monthly_clim.drop_vars('time', errors='ignore')
+        monthly_clim = monthly_clim.assign_coords(month=new_time).swap_dims({'month': 'month'}).rename({'month': 'time'}) # This renames the variable month to make it a true time series
 
-        seasonal = np.cos(np.linspace(0,2*np.pi,num=13))[:-1]* OFFSET
+        # Calculate the zonal mean (sst values for each latitude at a constant longitude)
+        sst_zonalmean = monthly_clim['tosbcs'].mean(dim='lon')
 
-        # Create sinusoidal SST pattern
-        sst_pattern = []
-        for phasing in seasonal:
-            sst_pattern.append(A * np.pow(np.cos(k_lat * lat2d + np.pi/180* phasing), 2) + T0) #+ B * np.sin(k_lon * lon2d + np.pi/180*beta) + T0
-        sst_stack = np.stack(sst_pattern, axis=0)
-        stacksize = sstfield['tosbcs'].shape[0]
-        sst_broadcast = np.tile(sst_stack, ((stacksize+11)//12, 1, 1))[:stacksize]
-        sstfield['tosbcs'].data = sst_broadcast
+        # Expand to match the shape of original data
+        sst_expanded = sst_zonalmean.broadcast_like(monthly_clim['tosbcs'])
+
+        # Expand to the complete timeframe dataset
+        # Get month index (1-12) for each time step
+        month_index = sst['time'].dt.month - 1 # 0-based indexing for .isel
+        # Select corresponding month from sst_expanded for each time step
+        sst_clim_expanded = sst_expanded.isel(time=month_index.values)
+        #Assing the original time back
+        sstfile = sst_clim_expanded.assign_coords(time=sst['time'])
+
+        sstfile = xr.Dataset(
+            data_vars={
+                'tosbcs': sstfile
+            },
+            coords={
+                'time': sstfile['time'],
+                'lat': sstfile['lat'],
+                'lon': sstfile['lon']
+            }
+        )
+
+        sstfile['tosbcs'].attrs = sst['tosbcs'].attrs
+    
+        # Save to new NetCDF file
         if os.path.exists(outputfile):
             os.remove(outputfile)
-        sstfield.to_netcdf(outputfile)
+        sstfile.to_netcdf(outputfile)
+
+    def create_sic(self, threshold=-1.8):
+        """
+        Generate idealized sea ice concentration based on SST threshold.
+        Set SIC = 1 where SST < threshold, else 0.
+        """
+
+        sstfile = os.path.join(self.odir_amip, 'tosbcs_input4MIPs_IZM_SSTsAndSeaIce_CMIP_PCMDI-AMIP-1-1-3_gn_187001-201706.nc')
+        sicfile = os.path.join(self.odir_amip, 'siconcbcs_input4MIPs_IZM_SSTsAndSeaIce_CMIP_PCMDI-AMIP-1-1-3_gn_187001-201706.nc')
+
+        # Load the SST dataset
+        sst_ds = xr.open_dataset(sstfile)
+
+        # SIC = 1 where SST < freezing threshold
+        sic = xr.where(sst_ds ['tosbcs'] < threshold, 1.0, 0.0)
+
+        # Create new dataset
+        # Convert to a Dataset for consistency
+        sic_ds = xr.Dataset({'siconcbcs': sic})
+
+        # Assign same attributes if needed (optional)
+        sic_ds['siconcbcs'].attrs = {
+            'long_name': 'Sea Ice Concentration (derived from SST)',
+            'units': '1',
+            'standard_name': 'sea_ice_area_fraction'
+        }
+
+        # Save to file
+        if os.path.exists(sicfile):
+            os.remove(sicfile)
+        sic.to_netcdf(sicfile)
 
     def create_climate(self):
         """
