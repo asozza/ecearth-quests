@@ -16,11 +16,15 @@ Usage:
 import os
 import shutil
 import argparse
+
+from ruamel.yaml import YAML
 from ruamel.yaml.scalarstring import PlainScalarString
 from ruamel.yaml.comments import CommentedMap
 from yaml_util import load_yaml, save_yaml
-from yaml_util import noparse_block, list_block
+from yaml_util import noparse_block, notag_block, list_block
 
+yaml = YAML()
+yaml.preserve_quotes = True
 
 def create_folder(expname, config, clean=False):
     """
@@ -115,36 +119,43 @@ def generate_user_config(expname, config):
     print(f"User configuration file written to: {user_config_file}")
 
 
-def add_tuning_section(config, context):
+def prepare_tuning_template(config, expname):
     """
     Adds custom tuning parameters directly into the jobscript.
     """
 
-    print('Changing tuning parameters!')
-
-    if 'tuning' not in config:
-        raise ValueError('Tuning section not found in config!')
+    print('Changing tuning parameters')
     
-    if 'tuning' not in context['model_config']['oifs']:
-        context['model_config']['oifs']['tuning'] = dict()
-
-    namelists = ['namcumf', 'namcldp']
-    parlist = dict()
-    parlist['namcumf'] = ['RPRCON', 'ENTRORG', 'DETRPEN', 'ENTRDD', 'RMFDEPS']
-    parlist['namcldp'] = 'RVICE RLCRITSNOW RSNOWLIN2 RCLDIFF RCLDIFF_CONVI'.split()
- 
-    params = config['tuning']
-
-    for namls in namelists:
-        if any([par in params for par in parlist[namls]]):
-            context['model_config']['oifs']['tuning'][namls] = dict()
-
-        for parnam in parlist[namls]:
-            if parnam in params:
-                print(f'Changing {parnam} to: {params[parnam]}')
-                context['model_config']['oifs']['tuning'][namls][parnam] = params[parnam]
+    job_dir = os.path.join(config['job_dir'], expname)
+    src_dir = config['ece_dir']
     
-    return context
+    # update tuning template file
+    original_file_path = os.path.join(src_dir, "scripts", "runtime", "templates", "tuning-example.yml")    
+    original_data = load_yaml(original_file_path)
+    base_context = original_data[0]['base.context']
+    model_config = base_context["model_config"]
+
+    # load tuning parameters
+    override_data = load_yaml(config['tuning'])
+
+    # Pulisce completamente il contenuto di model_config
+    for model_key in list(model_config.keys()):
+        if model_key not in override_data:
+            del model_config[model_key]
+
+    # Ricostruisce solo con ciò che c'è nel file di override
+    for model_name, namelist_dict in override_data.items():
+        model_config[model_name] = CommentedMap()
+        model_config[model_name]["tuning"] = CommentedMap()
+
+    for namelist_name, params in namelist_dict.items():
+        model_config[model_name]["tuning"][namelist_name] = CommentedMap(params)
+
+    yaml_path = os.path.join(job_dir, "templates", "tuning-example.yml")
+    save_yaml(yaml_path, base_context)
+    print(f"YAML script script written to: {yaml_path}")
+
+    return None
 
 
 def generate_job(kind, config, expname):
@@ -192,8 +203,9 @@ def generate_job(kind, config, expname):
         del context['model_config']['oifs']
         del context['model_config']['oasis']
 
+    # activate tuning 
     if 'tuning' in config:
-        context = add_tuning_section(config, context)
+        context['model_config']['tuning_file'] = noparse_block("{{se.cli.cwd}}/templates/tuning-example.yml")
     
     if 'forcing' in config:
         if 'cmip' not in context['experiment']['forcing'] or context['experiment']['forcing']['cmip'] is None:
@@ -290,3 +302,6 @@ if __name__ == "__main__":
     generate_job(args.kind, config, args.expname)
     generate_user_config(args.expname, config)
     create_launch(args.expname, config)
+
+    if 'tuning' in config:
+        prepare_tuning_template(config, args.expname)
