@@ -130,7 +130,12 @@ if __name__ == "__main__":
     icount = 1
 
     # cycle through all components and namelists
-    for comp in params:
+    for comp in components:
+        if comp in params:
+            print(f"Perturbating component: {comp}")
+        else:
+            print(f"Component {comp} not found in tuning parameters, skipping.")
+            continue        
         for namelist in params[comp]:
             for parname, parvalue in params[comp][namelist].items():
 
