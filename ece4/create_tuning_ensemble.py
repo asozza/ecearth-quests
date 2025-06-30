@@ -91,6 +91,10 @@ def perturbate(parname, parvalue, expname1, expname2, config, clean=False):
     tuning_context = tuning_base[0]['base.context']
 
     print(f"Updating {comp}.{namelist}.{parname} to {parvalue}")
+    if comp not in tuning_context['model_config']:
+        tuning_context['model_config'][comp] = dict()
+        tuning_context['model_config'][comp]['tuning'] = dict()
+        tuning_context['model_config'][comp]['tuning'][namelist] = dict()
     tuning_context['model_config'][comp]['tuning'][namelist][parname] = parvalue
     save_yaml(tuning_yaml, tuning_base)
     print(f"tuning YAML file written to: {tuning_yaml}")
