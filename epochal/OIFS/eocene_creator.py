@@ -6,6 +6,7 @@ from cdo import Cdo
 from utils import modify_single_grib, truncate_grib_file
 from utils import modify_value, replace_value
 from utils import extract_grid_info, spectral2gaussian
+import shutil
 from utils import GRIB2, NC4
 cdo = Cdo()
 
@@ -79,7 +80,13 @@ class EoceneOIFS():
             if not os.path.exists(herold_sd_topo):
                  raise FileNotFoundError(f"Herold data not found at {self.herold}")
             ds = xr.open_dataset(herold_sd_topo)
-            ds = ds.rename({"paleo_stddev_subgrid_topo": "sd_orography"})
+            ds = ds[["paleo_stddev_subgrid_topo"]].rename({"paleo_stddev_subgrid_topo": "sd_orography"})
+            # Fill NaNs with 0 — safest for GRIB encoding
+            ds["sd_orography"] = ds["sd_orography"].fillna(0)
+            # Add missing attributes
+            ds["sd_orography"].attrs["units"] = "m"
+            ds["sd_orography"].attrs["long_name"] = "Standard deviation of subgrid-scale paleotopography"
+            
         
         else:
              
@@ -254,6 +261,7 @@ class EoceneOIFS():
 
         Args:
             orog (xarray.DataArray): Orography data to be used for the ICMSH data.
+            sd_orog (xarray.DataArray, optional): Standard deviation of orography.
         """
         
 
@@ -267,8 +275,19 @@ class EoceneOIFS():
             variables='z',
             spectral=True,
             myfunction=replace_value,
-            newfield=orog*9.81 #converted to geopsotential
+            newfield=orog*9.81 #converted to geopotential
         )
+
+        ## ⬅️ Add sd_orography if provided
+        #if sd_orog is not None:
+        #    modify_single_grib(
+        #        inputfile=output_spectral,
+        #        outputfile=output_spectral,
+        #        variables='sdor',
+        #        spectral=False,  # likely gridpoint
+        #        myfunction=replace_value,
+        #        newfield=sd_orog
+        #    )
 
         # truncate spectral variables to first harmonic (mean value)
         truncate_grib_file(
@@ -277,7 +296,7 @@ class EoceneOIFS():
             outputfile=output_spectral,
         )
 
-    def create_init(self, landsea, tvh, tvl):
+    def create_init(self, landsea, tvh, tvl, cvh, cvl, sd_orog):
         """
         Create the ICMGGECE4INIT data for the Eocene OIFS.
         Replace landsea mask
@@ -285,22 +304,39 @@ class EoceneOIFS():
 
         Args:
             landsea (xarray.DataArray): Land-sea mask data to be used for the ICMGE data.
-            tvh (xarray.DataArray): Vegetation data for high vegetation.
-            tvl (xarray.DataArray): Vegetation data for low vegetation.
+            tvh (xarray.DataArray): Vegetation type data for high vegetation.
+            tvl (xarray.DataArray): Vegetation type data for low vegetation.
+            cvh (xarray.DataArray): Vegetation cover data for high vegetation.
+            cvl (xarray.DataArray): Vegetation cover data for low vegetation.
+            sd_orog (xarray.DataArray): Standard deviation of subgrid-scale orography.
         """
 
         input_surface = os.path.join(self.idir_init, 'ICMGGECE4INIT')
         output_surface = os.path.join(self.odir_init, 'ICMGGECE4INIT')
 
-        # erase all subgrid orography
+         # Start by copying the base surface file
+        shutil.copy(input_surface, output_surface)
+
+
+        # Inject sd_orography (sdfor)
+        modify_single_grib(
+            inputfile=output_surface,
+            outputfile=output_surface,
+            variables=['sdfor'],
+            spectral=False,
+            myfunction=replace_value,
+            newfield=sd_orog
+        )
+        # Zero out other subgrid orographic fields
         modify_single_grib(
             inputfile=input_surface,
             outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
-            variables=['sdfor', 'anor', 'isor', 'slor', 'cl', 'chnk', 'cvh', 'cvl'],
+            variables=['anor', 'isor', 'slor', 'cl', 'chnk'],
             spectral=False,
             myfunction=modify_value,
             newvalue=0.  
         )
+
 
         modify_single_grib(
             inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
@@ -320,7 +356,25 @@ class EoceneOIFS():
             newfield=tvl
         )
 
-        # erase all subgrid orography
+        modify_single_grib(
+            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            variables=['cvh'],
+            spectral=False,
+            myfunction=replace_value,
+            newfield=tvh
+        )
+
+        modify_single_grib(
+            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            variables=['cvl'],
+            spectral=False,
+            myfunction=replace_value,
+            newfield=tvl
+        )
+
+        #erase all subgrid orography
         modify_single_grib(
             inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
             outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
@@ -473,7 +527,7 @@ class EoceneOIFS():
                 tvl = xr.where(mask, biome_to_tvl[biome_id], tvl)
                 cvl = xr.where(mask, 1.0, cvl)
             else:
-                print(f"Warning: biome (biome_id) not in mapping.")
+                print(f"Warning: biome {biome_id} not in mapping.")
 
         # === Assemble final dataset ===
         vegetation_ds = xr.Dataset(
