@@ -1,12 +1,12 @@
 # 🧭 NEMO PALEORCA2 setup workflow
 
-This guide outlines the procedure for creating a new NEMO configuration starting from a custom coordinates file, in this specific case the `PALEORCA2` configuration, using the `DOMAINcfg` tool. This short guide assumes you have a coordinates file `coords_ori.nc` that can be used as a starting point. In our case, this will name as `paleorca` configuration for NEMO codes.
+This guide outlines the procedure for creating a new NEMO configuration starting from a custom coordinates file. This specific case generates the `paleorca` configuration with 2 degree horizontal resolution, using the `DOMAINcfg` tool. This short guide assumes you have a coordinates file `coords_ori.nc` that can be used as a starting point. In our case, this will name as `paleorca` configuration for NEMO codes.
 
-> ⚠️ The workflow assumes NEMO v4.2 and EC-Earth environment, and please consider the command not as something to copy/paste but rather as guidelines. 
+> ⚠️ The workflow assumes NEMO v4.2 and EC-Earth environment. 
 
 ### Necessary modules on HPC2020
 
-This modules are reccommended to run the NEMO tools and the short nemo run (see after). Load them in your environment. 
+This modules are reccommended to run the NEMO tools. Load them in your environment. 
 
 ```bash
 module reset
@@ -16,27 +16,21 @@ module load hdf5-parallel/1.12.2 netcdf4-parallel/4.9.1 ecmwf-toolbox/2023.04.1.
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$NETCDF4_PARALLEL_DIR/lib:$ECCODES_DIR/lib:$HDF5_DIR/lib:$HPCPERM/ecearth4/revisions/main/sources/oasis3-mct-5.2/arch_ecearth/lib
 ```
 
-> ⚠️ The OASIS libraries are required by NEMO and should be modified according to your EC-Erth installation path
+> ⚠️ The OASIS libraries are required by NEMO and should be modified according to your EC-Earth installation path
 
 ---
 
 ## 1. Preprocessing
 
-We start from coordinates file provided by the IPSL team, a grid configuration known as `PALEORCA2`. This is coming from NEMO 3.6, which implies it has the old NEMO convention for halo points, and it is made by 182x174 points.
+### 1.1 Adapting the halo
 
-### Adapting the halo
-
-ORCA grids from NEMO 4.2 has two points less in the zonal direction, and one point less in the meridional one. This means that we can "chop" out points to achieve the right number of lon/lat from older initial/boundry conditions file.
-
-ORCA2 was going from 182x149 to 180x148, so PALEORCA2 must go from 182x174 to 180x174.
-
-This can be achieved with cdo
+We start from coordinates file provided by the IPSL team, a grid configuration known as `PALEORCA2`. This is coming from NEMO 3.6, which implies it has the old NEMO convention for halo points, and it is made by 182x174 points. ORCA grids from NEMO 4.2 has two points less in the zonal direction, and one point less in the meridional one. ORCA2 was going from 182x149 to 180x148, so PALEORCA2 must go from 182x174 to 180x174.This means that we can "chop" out points to achieve the right number of lon/lat from older initial/boundry conditions file.  This can be achieved with cdo:
 
 ```bash
 cdo sethalo,-1,-1 coords_ori.nc coords_halo.nc
 ```
 
-### Adding the bounds
+### 1.2 Adding the bounds
 
 It is important to add cell bounds to this coordinate file so that we have a reference file for conservative interpolation. This can be achieved with the tool `orca_bounds_new.py` from AQUA available in the specific branch which can create the required cell bounds. The original tool is meant to work with the `mesh_mask.nc` file, but given that at this stage it is not available yet we modified slightly the code in order to make it work with simply a coordinate file. The adapted version is available at https://github.com/DestinE-Climate-DT/AQUA/blob/orca-coordinates.nc/cli/orca-grids/orca_bounds_new.py 
 
@@ -46,14 +40,15 @@ It is important to add cell bounds to this coordinate file so that we have a ref
 
 The options for staggering is set to `F` mostly because `paleorca` is an F-grid according to IPSL team, and `--no-level` is set because there is no need to try to produce vertical coordinates (it will not work since there are no such info in the coordinate file).
 
-### Interpolate the bathymetry
+### 1.3 Interpolate the bathymetry
 
-It is then important to produce an interpolated bathymetry to the target coordinate. This is done in our case starting from the eORCA1 bathymetry. Of course, in case of paleoclimate simulations, an appropriate bathymetry file is required. 
+It is then important to produce an interpolated bathymetry to the target coordinate. This is done in our case starting from 
+a) the eORCA1 bathymetry for present days;
+b) the herold bathymetry for the eocene. 
 
+> ⚠️ Note that the bathymetry is considered to be positive, so if you use an orography file you need to be flip the signs
 
-> ⚠️ Please notice that the bathymetry is considered to be positive, so if you use an orography file you need to be flip the signs
-
-> ⚠️ Another issue is that original eORCA domain file might not have appropriate bounds for remapping. this has to be generated or retrieve for the occasion, the `orca_bounds_new.py` file can be used as well as any other experiment output. At this stage, we gathered in `/lus/h2resw01/hpcperm/ccpd/EPOCHAL/ORCA` all the NEMO grid files with remapping weights
+> ⚠️ Note that original eORCA domain file might not have appropriate bounds for remapping. This has to be generated; the `orca_bounds_new.py` file can be used as well as any other experiment output. At this stage, we gathered in `/lus/h2resw01/hpcperm/ccpd/EPOCHAL/ORCA` all the NEMO grid files with remapping weights
 
 ```bash
 cdo remapnn,coords_bounds.nc \
@@ -62,55 +57,30 @@ cdo remapnn,coords_bounds.nc \
     /path/to/eORCA1/domain_cfg.nc \
     PALEORCA_bathy_metry_from_eORCA1.nc
 ```
+```bash
+cdo chname,topo,bathy_metry \
+    -mulc,-1 -setrtoc,0,10000,0 \
+    -remapnn,../coords_halo_bounds.nc \
+    -selname,topo,lon,lat herold_etal_eocene_topo_1x1.nc \
+    PALEORCA_bathy_metry_fromHerold.n
+```
 
 ## 2. Running the DOMAINcfg
 
-This tool will create the `domain_cfg.nc` file which is fundamental for all the further steps. 
+This tool will create the `domain_cfg.nc` and the `mesh_mask.nc` files which are fundamental for all the further steps. 
 
+### 2.1 Customize Bathymetry 
 
-### Modify the namelist
+This is important for the present day bathymetry since the remapping into a lower resolution could produce undesiderable results. To manually open or close specific straits, modify the FORTRAN routine `src/domain_zgr.F90`:
 
-There is a `namelist_cfg` namelist which has to be adapted to work with such configuration.
+Below, you can find an example where Panama and Thailand are connected to the main land and Gibraltar and Red Sea straits are open in the present day bathymetry. This has to be manually verified for each new configuration according to the user needs.
 
-```fortran
-&namcfg
-   ln_read_cfg = .false.
-   cn_fcoord   = "coords_bounds.nc"
-   nn_bathy    = 1
-   cn_topo     = "PALEORCA_bathy_metry_from_eORCA1.nc"
-   cn_bath     = "bathy_metry"
-   cn_lon      = "nav_lon"
-   cn_lat      = "nav_lat"
-/
+> ⚠️ Good policy is to set the `if/else` statement so that it works only for paleorca configuration. In this way, the present dsays configuration should be called `paleorca`, but the eocene configuration should be called in a different way, for example `paloercaEocene`
+
+> ⚠️ Note that such modifications have to be made for both, the full and the partial vertical coordinates. The one currently used is the block under `ln_zps`, which is for partial coordinates.
+
 ```
-
-- `ln_read_cfg = .false.` -> tells NEMO to generate a new domain from provided inputs
-- `nn_bathy = 1` -> ingest an external bathymetry file (already remapped on the target grid)
-- `cn_bath`, `cn_lon`, `cn_lat` -> variable names that must match your bathymetry file
-
-Furthermore, you need to adapt the number of points and the name of the configuration
-
-```fortran
-   cp_cfg      =  "paleorca"   !  name of the configuration
-   jp_cfg      =       2   !  resolution of the configuration
-   jpidta      =     180   !  1st lateral dimension ( >= jpi )
-   jpjdta      =     174   !  2nd    "         "    ( >= jpj )
-   jpkdta      =      31   !  number of levels      ( >= jpk )
-   Ni0glo      =     180   !  1st dimension of global domain --> i =jpidta
-   Nj0glo      =     174   !  2nd    -                  -    --> j  =jpjdta
-```
-
-### 🧪 Customize Bathymetry (optional)
-
-Modify `src/domain_zgr.F90` to manually open or close specific straits. 
-
-> ⚠️ Please notice that such modification has to be made for both the full and the partial vertical coordinates. The one currently used is the block under `ln_zps`, which is for partial coordinates.
-
-> ⚠️ Good policy is to set the `if/else` statement so that it works only for paleorca configuration.
-
-Here below, you can find an example modification where Panama and Thailand are connected to the main land and Gibrailtair and Red Sea straits are openend. Of course, this has to be manually verified for each new configuration according to the user needs.
-
-```fortran                                           
+fortran                                           
                                                      ! =====================
 IF( cp_cfg == "paleorca" .AND. jp_cfg == 2 ) THEN    ! PALEORCA configuration
     !                                                 ! =====================   
@@ -161,8 +131,7 @@ IF( cp_cfg == "paleorca" .AND. jp_cfg == 2 ) THEN    ! PALEORCA configuration
 
 > 🔎 Grid indices in `ncview` differ from Fortran by +2, so adjust accordingly. However, a lot of manual tuning is required. 
 
-
-### Compile the tool
+### 2.2 Compile the tool
 
 Compile the domain tool, available in `sources/nemo-4.2/tools`
 
@@ -180,59 +149,73 @@ Of course, after each modification you need to recompile the tool. A shortcut fo
 
 ```bash
 ./maketools -m ecearth -n DOMAINcfg;  cd DOMAINcfg;  ./make_domain_cfg.exe ; cd ..
+```
 
-### Run DOMAINcfg
+### 2.3 Modify the namelist
+
+There is a `namelist_cfg` namelist which has to be adapted to work with such configuration.
+
+```fortran
+&namcfg
+   ln_read_cfg = .false.
+   cn_fcoord   = "coords_bounds.nc"
+   nn_bathy    = 1
+   cn_topo     = "PALEORCA_bathy_metry_from_eORCA1.nc"
+   cn_bath     = "bathy_metry"
+   cn_lon      = "nav_lon"
+   cn_lat      = "nav_lat"
+/
+```
+
+- `ln_read_cfg = .false.` -> tells NEMO to generate a new domain from provided inputs
+- `nn_bathy = 1` -> ingest an external bathymetry file (already remapped on the target grid)
+- `cn_bath`, `cn_lon`, `cn_lat` -> variable names that must match your bathymetry file
+
+Furthermore, you need to adapt the number of points and the name of the configuration
+
+```fortran
+   cp_cfg      =  "paleorca"   !  name of the configuration
+   jp_cfg      =       2   !  resolution of the configuration
+   jpidta      =     180   !  1st lateral dimension ( >= jpi )
+   jpjdta      =     174   !  2nd    "         "    ( >= jpj )
+   jpkdta      =      31   !  number of levels      ( >= jpk )
+   Ni0glo      =     180   !  1st dimension of global domain --> i =jpidta
+   Nj0glo      =     174   !  2nd    -                  -    --> j  =jpjdta
+```
+
+Finally, to get the `mesh_mask.nc` file together with the `domain_cfg.nc` file from the tool, it is necessary to activate a flag in the `namelist_ref`
+
+```fortran
+&namdom
+   nn_msh      =    1      !  create (=1) a mesh file or not (=0)
+/
+```
+
+### 2.4 Run DOMAINcfg
 
 ```bash
 ./make_domain_cfg.exe
 ```
 
-This creates `domain_cfg.nc`. Manual inspection to `bathy_metry` and `top_level` is required to verify that everything worked as expected.
-
+This creates `domain_cfg.nc` and `mesh_mask.nc`. Manual inspection to `bathy_metry` and `top_level` is required to verify that everything worked as expected.
 
 ## 3. Generate the `maskutil.nc`
-
-You  will need to run a short NEMO simulation to generate `mesh_mask.nc`. This can be done by running a specific preconfigured experiments which is available if you compiled EC-Earth or by using the DOMAINcfg tool with a specific setup
-
-
-### Option a): Use DOMAINcfg to generate the `mesh_mask.nc`
-
-This is the preferred option and should be your default: if you setup the DOMAINcfg `namelist_ref` with `nn_msh=1`, a call to
-
-```bash
-./make_domain_cfg.exe
-```
-
-will automatically produce also the `mesh_mask.nc`
-
-### Option b):  Run a test experiment to generate the `mesh_mask.nc`
-
-There is a test experiment where NEMO is linked and compiled and is available in `sources/nemo-4.2/cfgs/ECEARTH/EXP00`
-
-However, you will need:
-
-- linking/copying the `domain_cfg.nc` 
-- modifying the `namelist_cfg` so that it points to the domain file,
-- copy a `namcouple` so that oasis will not crash, a random one should make the job
-
-It is possible then to run a short experiment.
-
-```bash
-mpi_run -np 1 ./nemo
-```
-
-The simulation will fail but will produce a `mesh_mask.nc` with all the info about the mask
-
-### Create the `maskutil.nc`
 
 Use the provided Python script to generate the final mask:
 
 ```bash
-python orca2_create.py
+python mask_util_create.py
+```
+or
+
+```bash
+python mask_util_create.py --src_dir {src_dir} --tgt_dir {tgt_dir}
 ```
 
+> ⚠️ Be aware that the `{src_dir}` and the `{tgt_dir}` should be different
+
 You can find the script here:
-https://github.com/asozza/ecearth-quests/blob/main/epochal/NEMO/orca2_create.py
+https://github.com/asozza/ecearth-quests/blob/main/epochal/NEMO/mask_util_create.py
 
 Please verify that folder structure inside the script fits your needs
 
