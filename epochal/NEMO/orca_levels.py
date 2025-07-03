@@ -8,6 +8,10 @@ Author: Alessandro Sozza (CNR-ISAC)
 Date: July 2025
 """
 
+# example:
+# ./orca_levels.py -i /ec/res4/hpcperm/itas/data/ece-4-database/nemo/initial/woa13-levitus.nc -s /ec/res4/hpcperm/itas/data/ece-4-database/nemo/domain/eORCA1/domain_cfg.nc -d /ec/res4/hpcperm/itas/data/ece-4-database/nemo/domain/ORCA2/domain_cfg.nc -o /ec/res4/hpcperm/itas/data/ece-4-database/nemo/initial/woa13-levitus_ORCA2.nc
+
+
 import sys
 import os
 import argparse
@@ -95,7 +99,7 @@ def main(input_nc, srcdomain_nc, dstdomain_nc, output_nc):
 
     new_ds = xr.Dataset(output_vars)    
     new_ds.attrs = ds.attrs
-
+    
     if axes['time']:
         new_ds.to_netcdf(output_nc, encoding=encoding, unlimited_dims=axes['time'])
     else:
