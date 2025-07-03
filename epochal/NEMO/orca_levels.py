@@ -48,10 +48,8 @@ def main(input_nc, srcdomain_nc, dstdomain_nc, output_nc):
     dstdomain = xr.open_dataset(dstdomain_nc)
 
     depth = detect_axis(ds, 'z', where='coords')
-    time = detect_axis(ds, 'time', where='dims')
-    x = detect_axis(ds, 'x', where='dims')
-    y = detect_axis(ds, 'y', where='dims')
-    z = detect_axis(ds, 'z', where='dims')
+    for d in ['time', 'x', 'y', 'z']:
+        d = detect_axis(ds, d, where='dims')
 
     old_depths = srcdomain[depth].values
     new_depths = dstdomain[depth].values
