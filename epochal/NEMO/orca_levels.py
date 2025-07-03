@@ -23,7 +23,7 @@ axis_candidates = {
 }
 
 def detect_axis(ds, axis_type, where='dims'):
-
+    
     candidates = axis_candidates.get(axis_type, [])
     if where in ['dims', 'coords']:
         search_space = getattr(ds, where, {})  # ds.dims or ds.coords
@@ -45,28 +45,26 @@ def interpolate(data, old_depths, new_depths, axis):
 
 
 def main(input_nc, srcdomain_nc, dstdomain_nc, output_nc):
-
+    
     ds = xr.open_dataset(input_nc)
     srcdomain = xr.open_dataset(srcdomain_nc)
     dstdomain = xr.open_dataset(dstdomain_nc)
-
+    
     # assign axis
     axes = {}
     for ax in ['time', 'x', 'y', 'z']:
         axes[ax] = detect_axis(ds, ax, where='dims')
-
+        
     # assign depths
     depth = detect_axis(srcdomain, 'z', where='vars')
     old_depths = srcdomain[depth].values
     new_depths = dstdomain[depth].values
-
-    if depth not in ds.data_vars:
-        ds = ds.assign_coords({axes['z']: (axes['z'], old_depths)})
-        
+    
     output_vars = {}
+    encoding = {}
     for varname in ds.data_vars:
         var = ds[varname]
-
+        
         if axes['z'] not in var.dims:
             continue  # Skip variables without vertical dimension
 
@@ -77,27 +75,32 @@ def main(input_nc, srcdomain_nc, dstdomain_nc, output_nc):
                 interp_slice = interpolate(slice_t, old_depths, new_depths, axis=0)
                 data.append(interp_slice)
             new_array = np.stack(data, axis=0)
-            new_dims = (axes['time'], axes['z']) + tuple(d for d in var.dims if d not in [axes['time'], axes['z']])
-            new_coords = {axes['time']: ds[axes['time']], axes['y']: ds[axes['y']], axes['x']: ds[axes['x']], axes['z']: new_depths}
-            #for dim in new_dims:
-            #    if dim not in new_coords:
-            #        new_coords[dim] = ds[dim]
+            new_dims = (axes['time'], axes['z'], axes['y'], axes['x'])
+            new_coords = {axes['time']: ds[axes['time']]}
         else:
             data = var.values
             new_array = interpolate(data, old_depths, new_depths, axis=0)
-            new_dims = (depth,) + tuple(d for d in var.dims if d != depth)
-            new_coords = {depth: new_depths}
-            #for dim in new_dims:
-            #    if dim not in new_coords:
-            #        new_coords[dim] = ds[dim]
-
+            new_dims = (axes['z'], axes['y'], axes['x'])
+            new_coords = {}
+            
         output_vars[varname] = xr.DataArray(new_array, dims=new_dims, coords=new_coords, name=varname, attrs=var.attrs)
         
+        encoding[varname] = {
+            '_FillValue': 9.96921e+36,
+            'missing_value': 9.96921e+36,
+            'zlib': True,
+            'complevel': 4,
+            'dtype': 'float32'
+        }
+
     new_ds = xr.Dataset(output_vars)    
     new_ds.attrs = ds.attrs
-    new_ds.to_netcdf(output_nc)
 
-
+    if axes['time']:
+        new_ds.to_netcdf(output_nc, encoding=encoding, unlimited_dims=axes['time'])
+    else:
+        new_ds.to_netcdf(output_nc, encoding=encoding)        
+        
 
 if __name__ == "__main__":
 
