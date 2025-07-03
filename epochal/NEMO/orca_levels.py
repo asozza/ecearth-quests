@@ -25,8 +25,11 @@ axis_candidates = {
 def detect_axis(ds, axis_type, where='dims'):
 
     candidates = axis_candidates.get(axis_type, [])
-    search_space = getattr(ds, where, {})  # ds.dims or ds.coords
-
+    if where in ['dims', 'coords']:
+        search_space = getattr(ds, where, {})  # ds.dims or ds.coords
+    else:        
+        search_space = ds.data_vars
+        
     for candidate in candidates:
         if candidate in search_space:
             return candidate
@@ -47,47 +50,50 @@ def main(input_nc, srcdomain_nc, dstdomain_nc, output_nc):
     srcdomain = xr.open_dataset(srcdomain_nc)
     dstdomain = xr.open_dataset(dstdomain_nc)
 
-    depth = detect_axis(ds, 'z', where='coords')
-    for d in ['time', 'x', 'y', 'z']:
-        d = detect_axis(ds, d, where='dims')
+    # assign axis
+    axes = {}
+    for ax in ['time', 'x', 'y', 'z']:
+        axes[ax] = detect_axis(ds, ax, where='dims')
 
+    # assign depths
+    depth = detect_axis(srcdomain, 'z', where='vars')
     old_depths = srcdomain[depth].values
     new_depths = dstdomain[depth].values
 
-    if depth not in ds.coords:
-        ds = ds.assign_coords({depth: ("z", old_depths)})
-
+    if depth not in ds.data_vars:
+        ds = ds.assign_coords({axes['z']: (axes['z'], old_depths)})
+        
     output_vars = {}
     for varname in ds.data_vars:
         var = ds[varname]
 
-        if depth not in var.dims:
+        if axes['z'] not in var.dims:
             continue  # Skip variables without vertical dimension
 
-        if time:
+        if axes['time']:
             data = []
-            for t in range(var.sizes[time]):
-                slice_t = var.isel({time: t}).values
+            for t in range(var.sizes[axes['time']]):                
+                slice_t = var.isel({axes['time']: t}).values
                 interp_slice = interpolate(slice_t, old_depths, new_depths, axis=0)
                 data.append(interp_slice)
             new_array = np.stack(data, axis=0)
-            new_dims = (time, depth) + tuple(d for d in var.dims if d not in [time, depth])
-            new_coords = {time: ds[time], "y": ds["y"], "x": ds["x"], depth: new_depths}
-            for dim in new_dims:
-                if dim not in new_coords:
-                    new_coords[dim] = ds[dim]
+            new_dims = (axes['time'], axes['z']) + tuple(d for d in var.dims if d not in [axes['time'], axes['z']])
+            new_coords = {axes['time']: ds[axes['time']], axes['y']: ds[axes['y']], axes['x']: ds[axes['x']], axes['z']: new_depths}
+            #for dim in new_dims:
+            #    if dim not in new_coords:
+            #        new_coords[dim] = ds[dim]
         else:
             data = var.values
             new_array = interpolate(data, old_depths, new_depths, axis=0)
             new_dims = (depth,) + tuple(d for d in var.dims if d != depth)
             new_coords = {depth: new_depths}
-            for dim in new_dims:
-                if dim not in new_coords:
-                    new_coords[dim] = ds[dim]
+            #for dim in new_dims:
+            #    if dim not in new_coords:
+            #        new_coords[dim] = ds[dim]
 
         output_vars[varname] = xr.DataArray(new_array, dims=new_dims, coords=new_coords, name=varname, attrs=var.attrs)
-
-    new_ds = xr.merge(output_vars.values())
+        
+    new_ds = xr.Dataset(output_vars)    
     new_ds.attrs = ds.attrs
     new_ds.to_netcdf(output_nc)
 
@@ -96,12 +102,12 @@ def main(input_nc, srcdomain_nc, dstdomain_nc, output_nc):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Interpolate vertical levels using two domain_cfg.nc files.")
-    parser.add_argument("--input", "-i", required=True, help="Input NetCDF file to interpolate")
+    parser.add_argument("--infile", "-i", required=True, help="Input NetCDF file to interpolate")
     parser.add_argument("--srcdomain", "-s", required=True, help="Source domain_cfg.nc with original vertical levels")
     parser.add_argument("--dstdomain", "-d", required=True, help="Destination domain_cfg.nc with target vertical levels")
-    parser.add_argument("--output", "-o", required=True, help="Output NetCDF file")
+    parser.add_argument("--outfile", "-o", required=True, help="Output NetCDF file")
 
     args = parser.parse_args()
 
-    main(args.input, args.srcdomain, args.dstdomain, args.output)
+    main(args.infile, args.srcdomain, args.dstdomain, args.outfile)
 
