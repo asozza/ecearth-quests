@@ -15,6 +15,25 @@ GRIB1="-f grb1 --eccodes"
 NC4='-f nc4 --eccodes'
 
 
+def nullify_grib(inputfile, outputfile, variables):
+    """"
+    Set to zero a variable in a GRIB file.
+    This is done by unpacking the GRIB file, setting it to zero with CDO and then repacking it
+    """ 
+
+    print(f"Nullifying variable {variables} in GRIB file {inputfile}")
+    
+    if os.path.exists(inputfile):
+
+        varlist=','.join(variables)
+        singlefile = cdo.selname(varlist, input=inputfile, options="--eccodes")
+        tempfile = cdo.mulc(0, input=singlefile, options="--eccodes")
+
+        replace_field(inputfile, tempfile, outputfile, variables)
+    else: 
+        print(f'{inputfile} does not exist!')
+
+
 def modify_grib(inputfile, outputfile, myfunction, spectral=False, **kwargs):
     """
     Modify a GRIB file using a function.

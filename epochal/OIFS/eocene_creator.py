@@ -3,7 +3,7 @@ import os
 import xarray as xr
 import numpy as np
 from cdo import Cdo
-from utils import modify_single_grib, truncate_grib_file
+from utils import modify_single_grib, truncate_grib_file, nullify_grib
 from utils import modify_value, replace_value
 from utils import extract_grid_info, spectral2gaussian
 import shutil
@@ -337,6 +337,11 @@ class EoceneOIFS():
             newvalue=0.  
         )
 
+        nullify_grib(
+            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            variables=['sd']
+        )
 
         modify_single_grib(
             inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
