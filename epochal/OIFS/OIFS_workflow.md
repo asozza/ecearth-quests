@@ -19,7 +19,7 @@ First thing, you need to initialize the class. This requires setting up 3 differ
 
 - `idir`: this define the original TL63 data that you want to start from 
 - `odir`: this is the path where you want to create the new directory tree. The assumption is that we use a different `datadir` for modification to boundary conditions since current EC-Earth structure does not support such fine tuning
-- `herolddir`: DeepMIP protocl relies on the work by Herold et al, 2014, where all the netcdf files are provided to create orography/bathymetry etc.
+- `herolddir`: DeepMIP protocol relies on the work by Herold et al, 2014, where all the netcdf files are provided to create orography/bathymetry etc.
 
 ```python
 
@@ -36,7 +36,7 @@ eocene = EoceneOIFS(
 Then using this class, it is possible to prepare a couple of fundamental xarray fileds that we will use later on, which are vegetation, land sea mask and orography. Please notice, that this implies some operations but mostly interpolation toward the TL63 grid. 
 
 ```python
-vegetation = xr.open_dataset(eocene.prepare_vegetation())
+vegetation = xr.open_dataset("eocene.prepare_vegetation_zhang()")
 landsea =xr.open_dataset(eocene.prepare_herold(flag="landsea_mask"))
 orog = xr.open_dataset(eocene.prepare_herold(flag="orography"))
 ```
@@ -46,18 +46,25 @@ orog = xr.open_dataset(eocene.prepare_herold(flag="orography"))
 The class allow for a pretty simple call
 
 ```python
-eocene.create_init(landsea=landsea['landsea_mask'], tvl=vegetation['tvl'], tvh=vegetation['tvh'])
+eocene.create_init(landsea=landsea['landsea_mask'], tvl=vegetation['tvl'], tvh=vegetation['tvh'], cvl=vegetation['cvl'], cvh=vegetation['cvh'], sd_orog=sd_orog)
 eocene.create_iniua()
 ```
 
 For the ICMGGINIT file, we set to zero most of the fields, 
-we replace the land-sea mask and we modify some other secondary field (to be expanded)
+we replace the land-sea mask and we inject:
+ the high and low vegetation types (tvh, tvl)
+
+ their fractional coverage (cvh, cvl)
+
+ and the subgrid-scale orography standard deviation (sdfor)
+
+The vegetation types and cover are based on a mapping of the Herold Eocene biome dataset using Zhang et al. (2021).
 
 For the ICMGGINIUA file, the most relevant change is setting the specific humidity to 0 in the entire vertical column.
 
 ## Generate the ICMSHINIT
 
-The class allow for a pretty simple call again. The idea is to extract the orograpjy from spectral and replace with the the ones actually provided by Herold et al.
+The class allow for a pretty simple call again. The idea is to extract the orography from spectral and replace with the the ones actually provided by Herold et al.
 
 Values of the Herold has to be convert from meter to geopotential height
 

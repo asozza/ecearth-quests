@@ -3,9 +3,10 @@ import os
 import xarray as xr
 import numpy as np
 from cdo import Cdo
-from utils import modify_single_grib, truncate_grib_file
+from utils import modify_single_grib, truncate_grib_file, nullify_grib
 from utils import modify_value, replace_value
 from utils import extract_grid_info, spectral2gaussian
+import shutil
 from utils import GRIB2, NC4
 cdo = Cdo()
 
@@ -59,40 +60,56 @@ class EoceneOIFS():
 
     def prepare_herold(self, flag=None):
         """
-        Create a new topographic variable (land-sea mask, opensea mask, bathymetry, orography)
-        from the topography data.
+        Create a new topographic variable (land-sea mask, opensea mask, bathymetry, orography, sd_orography)
+        from the topography and sd topography data.
 
         Args:
             data (xarray.Dataset): Topography data.
             flag (str): Type of variable to create. One of:
-                        "landsea_mask", "mask_opensea", "bathymetry", "orography".
+                        "landsea_mask", "mask_opensea", "bathymetry", "orography", "sd_orography".
         """
 
         if not flag:
-            raise ValueError("Flag must be specified. Options are: landsea_mask, mask_opensea, bathymetry, orography")
+            raise ValueError("Flag must be specified. Options are: landsea_mask, mask_opensea, bathymetry, orography, sd_orography")
 
-        # Read the topography data
+        # Paths for topography and sd_topography data
         herold_topo = os.path.join(self.herold, 'herold_etal_eocene_topo_1x1.nc')
+        herold_sd_topo = os.path.join(self.herold, 'herold_etal_stddev_subgrid_etopo1_to_eocene_1x1.nc')
 
-        if not os.path.exists(herold_topo):
-            raise FileNotFoundError(f"Herold data not found at {self.herold}")
+        if flag == "sd_orography":
+            if not os.path.exists(herold_sd_topo):
+                 raise FileNotFoundError(f"Herold data not found at {self.herold}")
+            ds = xr.open_dataset(herold_sd_topo)
+            ds = ds[["paleo_stddev_subgrid_topo"]].rename({"paleo_stddev_subgrid_topo": "sd_orography"})
+            # Fill NaNs with 0 — safest for GRIB encoding
+            ds["sd_orography"] = ds["sd_orography"].fillna(0)
+            # Add missing attributes
+            ds["sd_orography"].attrs["units"] = "m"
+            ds["sd_orography"].attrs["long_name"] = "Standard deviation of subgrid-scale paleotopography"
+            
         
-        ds = xr.open_dataset(herold_topo)
-
-        if flag == "landsea_mask":
-            ds["landsea_mask"] = (ds["topo"] > 0).astype(int)
-
-        elif flag == "mask_opensea":
-            ds["mask_opensea"] = (ds["topo"] < 0).astype(int)
-
-        elif flag == "bathymetry":
-            ds["bathymetry"] = -ds["topo"].where(ds["topo"] < 0, 0)
-
-        elif flag == "orography":
-            ds["orography"] = ds["topo"].where(ds["topo"] > 0, 0)
-
         else:
-            raise ValueError(f"Unknown flag: {flag}")
+             
+            # Load datasets
+            if not os.path.exists(herold_topo):
+                raise FileNotFoundError(f"Herold data not found at {self.herold}")
+        
+            ds = xr.open_dataset(herold_topo)
+
+            if flag == "landsea_mask":
+                 ds["landsea_mask"] = (ds["topo"] > 0).astype(int)
+
+            elif flag == "mask_opensea":
+                 ds["mask_opensea"] = (ds["topo"] < 0).astype(int)
+
+            elif flag == "bathymetry":
+                 ds["bathymetry"] = -ds["topo"].where(ds["topo"] < 0, 0)
+
+            elif flag == "orography":
+                 ds["orography"] = ds["topo"].where(ds["topo"] > 0, 0)
+
+            else:
+                 raise ValueError(f"Unknown flag: {flag}")
 
         filename = os.path.join(self.herold, f"{flag}.nc")
 
@@ -102,11 +119,12 @@ class EoceneOIFS():
         
         if os.path.exists(filename):
             os.remove(filename)
+        
         # Save to NetCDF
         ds.to_netcdf(filename)
 
-
-        if flag in ["landsea_mask", "orography"]:
+        #Remap where needed
+        if flag in ["landsea_mask", "orography", "sd_orography"]:
             if os.path.exists(os.path.join(self.herold, f"{flag}_remap.nc")):
                 os.remove(os.path.join(self.herold, f"{flag}_remap.nc"))
             cdo.remapcon(
@@ -243,6 +261,7 @@ class EoceneOIFS():
 
         Args:
             orog (xarray.DataArray): Orography data to be used for the ICMSH data.
+            sd_orog (xarray.DataArray, optional): Standard deviation of orography.
         """
         
 
@@ -256,8 +275,19 @@ class EoceneOIFS():
             variables='z',
             spectral=True,
             myfunction=replace_value,
-            newfield=orog*9.81 #converted to geopsotential
+            newfield=orog*9.81 #converted to geopotential
         )
+
+        ## ⬅️ Add sd_orography if provided
+        #if sd_orog is not None:
+        #    modify_single_grib(
+        #        inputfile=output_spectral,
+        #        outputfile=output_spectral,
+        #        variables='sdor',
+        #        spectral=False,  # likely gridpoint
+        #        myfunction=replace_value,
+        #        newfield=sd_orog
+        #    )
 
         # truncate spectral variables to first harmonic (mean value)
         truncate_grib_file(
@@ -266,7 +296,7 @@ class EoceneOIFS():
             outputfile=output_spectral,
         )
 
-    def create_init(self, landsea, tvh, tvl):
+    def create_init(self, landsea, tvh, tvl, cvh, cvl, sd_orog):
         """
         Create the ICMGGECE4INIT data for the Eocene OIFS.
         Replace landsea mask
@@ -274,21 +304,43 @@ class EoceneOIFS():
 
         Args:
             landsea (xarray.DataArray): Land-sea mask data to be used for the ICMGE data.
-            tvh (xarray.DataArray): Vegetation data for high vegetation.
-            tvl (xarray.DataArray): Vegetation data for low vegetation.
+            tvh (xarray.DataArray): Vegetation type data for high vegetation.
+            tvl (xarray.DataArray): Vegetation type data for low vegetation.
+            cvh (xarray.DataArray): Vegetation cover data for high vegetation.
+            cvl (xarray.DataArray): Vegetation cover data for low vegetation.
+            sd_orog (xarray.DataArray): Standard deviation of subgrid-scale orography.
         """
 
         input_surface = os.path.join(self.idir_init, 'ICMGGECE4INIT')
         output_surface = os.path.join(self.odir_init, 'ICMGGECE4INIT')
 
-        # erase all subgrid orography
+         # Start by copying the base surface file
+        shutil.copy(input_surface, output_surface)
+
+
+        # Inject sd_orography (sdfor)
+        modify_single_grib(
+            inputfile=output_surface,
+            outputfile=output_surface,
+            variables=['sdfor'],
+            spectral=False,
+            myfunction=replace_value,
+            newfield=sd_orog
+        )
+        # Zero out other subgrid orographic fields
         modify_single_grib(
             inputfile=input_surface,
             outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
-            variables=['sdor', 'anor', 'isor', 'slor', 'cl', 'chnk', 'cvh', 'cvl'],
+            variables=['anor', 'isor', 'slor', 'cl', 'chnk'],
             spectral=False,
             myfunction=modify_value,
             newvalue=0.  
+        )
+
+        nullify_grib(
+            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            variables=['sd']
         )
 
         modify_single_grib(
@@ -309,7 +361,25 @@ class EoceneOIFS():
             newfield=tvl
         )
 
-        # erase all subgrid orography
+        modify_single_grib(
+            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            variables=['cvh'],
+            spectral=False,
+            myfunction=replace_value,
+            newfield=tvh
+        )
+
+        modify_single_grib(
+            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            variables=['cvl'],
+            spectral=False,
+            myfunction=replace_value,
+            newfield=tvl
+        )
+
+        #erase all subgrid orography
         modify_single_grib(
             inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
             outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
@@ -409,7 +479,79 @@ class EoceneOIFS():
         return os.path.join(self.odir_init, "ICMGG_vegetation.nc")
 
 
+    def prepare_vegetation_zhang(self):
+        """"
+        Alternative method to create the ICMGG vegetation data for the Eocene OIFS.
+        Replace the vegetation data with the one from the Herold data.
+        Set the vegetation content to 1 for the dominant vegetation type and 0 to the others.
+        Perform a mapping using the Zhang et al., 2021 criteria. 
+        """
 
+
+        herold_file = os.path.join(self.herold, "herold_etal_eocene_biome_1x1.nc")
+        herold_remap = cdo.remapnn(
+            f"N{self.gaussian}", 
+            input=herold_file, 
+            output=os.path.join(self.herold, "herold_etal_eocene_biome_1x1_N32.nc")
+        )
+
+        herold = xr.open_dataset(herold_remap)
+
+        # === Biome to vegetation ID mappings ===
+        biome_to_tvh = {
+            1: 1, # Tropical forest → Evergreen broadleaf trees
+            2: 2, # Warm-temperate forest → Evergreen needleleaf trees
+            6: 3, # Temperate forest → Deciduous broadleaf
+            7: 4, # Boreal forest → Deciduous needleleaf
+        }
+
+        biome_to_tvl = {
+            3: 5, # Savanna → Tall grass
+            4: 6, # Grassland → Short grass
+            5: 7, # Desert → Semidesert
+            8: 8, # Tundra → Tundra
+            9: 8, # Dry Tundra → Tundra
+        }
+
+        # === Create blank data arrays ===
+        shape = herold['eocene_biome_hp'].shape
+        coords = herold.coords
+
+        tvh = xr.full_like(herold['eocene_biome_hp'], fill_value=0)
+        tvl = xr.full_like(herold['eocene_biome_hp'], fill_value=0)
+        cvh = xr.zeros_like(tvh)
+        cvl = xr.zeros_like(tvl)
+
+        for biome_id in range(1, 10): # assuming biome IDs go from 1 to 9
+            mask = herold['eocene_biome_hp'] == biome_id
+
+            if biome_id in biome_to_tvh:
+                tvh = xr.where(mask, biome_to_tvh[biome_id], tvh)
+                cvh = xr.where(mask, 1.0, cvh)
+            elif biome_id in biome_to_tvl:
+                tvl = xr.where(mask, biome_to_tvl[biome_id], tvl)
+                cvl = xr.where(mask, 1.0, cvl)
+            else:
+                print(f"Warning: biome {biome_id} not in mapping.")
+
+        # === Assemble final dataset ===
+        vegetation_ds = xr.Dataset(
+        {
+            "tvh": tvh,
+            "tvl": tvl,
+            "cvh": cvh,
+            "cvl": cvl
+        },
+
+        )
+
+        # === Save ===
+        output_path = os.path.join(self.odir_init, "ICMGG_vegetation.nc")
+        if os.path.exists(output_path):
+            os.remove(output_path)
+        vegetation_ds.to_netcdf(output_path)
+
+        return output_path
 
 
 
