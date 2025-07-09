@@ -9,7 +9,7 @@ Date: July 2025
 """
 
 # example:
-# ./add_lonlat.py -f /ec/res4/hpcperm/itas/data/ece-4-database/nemo/initial/woa13-levitus_L31.nc
+# ./add_lonlat.py -f /ec/res4/hpcperm/itas/data/ece-4-database/nemo/initial/woa13-levitus-L31.nc
 
 import sys
 import os
@@ -43,7 +43,7 @@ def main(path):
     folder = os.path.dirname(path)
     basename = os.path.basename(path)
     name, ext = os.path.splitext(basename)
-    new_path = os.path.join(folder, name + "_lonlat" + ext)
+    new_path = os.path.join(folder, name + "_r360x180" + ext)
 
     # write output
     ds.to_netcdf(new_path)
