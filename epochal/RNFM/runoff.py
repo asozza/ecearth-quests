@@ -187,7 +187,7 @@ def calc_basins_dim(rnf_map, lat):
 
 
 def get_largest_basins(rnf_map, rivers, rivers_dir, lat, basin_thres = 50):
-    basins = calc_basins_dim(rnf_map, lat = oroslope.latitude)
+    basins = calc_basins_dim(rnf_map, lat = lat)
 
     print(f'Selecting {np.sum(basins > basin_thres)} largest basins!')
 
@@ -228,8 +228,11 @@ def track_rivers_and_merge(big_rivers, big_rivers_dir, flowdir, riv_thres = 30, 
                 if tuple(po) in big_rivers: 
                     print('This is a big river! keeping as is')
                     if tuple(po) not in rivers_v2:
+                        print('WARNING! This section should be inactive, something weird is happening...')
                         rivers_v2.append(tuple(po))
                         rivers_v2_dir.append(podir)
+                        ind = rivers_v2.index(tuple(po))
+                        rivers_merged[ind] = [po]
                 
                     rnf_map_merged[i,j] = rivers_v2.index(tuple(po))
                 else:
@@ -299,7 +302,7 @@ def track_rivers_and_merge(big_rivers, big_rivers_dir, flowdir, riv_thres = 30, 
     return rnf_map_merged, rivers_merged, rivers_v2, rivers_v2_dir
 
 
-def drop_assign_fill(rnf_map_merged, rivers_v2, rivers_v2_dir, lat = None, basin_thres = 50):
+def drop_assign_fill(rnf_map_merged, rivers_merged, rivers_v2, rivers_v2_dir, lat = None, basin_thres = 50):
     """
     After the merge, some basins are still below threshold. This routine drops the small basins and assigns the points to one of the closest basins (takes a random neighboring point). The routine goes in loops to assign all points.
     """
@@ -310,7 +313,6 @@ def drop_assign_fill(rnf_map_merged, rivers_v2, rivers_v2_dir, lat = None, basin
         if ind not in list(ok_indx):
             print(f'{ind}: small basin, deassigning..')
             rnf_map_merged[rnf_map_merged == ind] = -1
-
 
     rnf_map_filled = rnf_map_merged.copy()
     nla, nlo = rnf_map_merged.shape
@@ -344,8 +346,23 @@ def drop_assign_fill(rnf_map_merged, rivers_v2, rivers_v2_dir, lat = None, basin
                     else:
                         missing = True
                         not_assigned.append((i,j))
+    
+    # Now change numbering to sequential
+    rnf_map_newnum = np.zeros(rnf_map_merged.shape) - 2
+    rivers_newnum = {}
 
-    return rnf_map_merged, not_assigned
+    for ii, inum in enumerate(ok_indx):
+        rnf_map_newnum[rnf_map_filled == inum] = ii
+        rivers_newnum[ii] = rivers_merged[inum]
+
+    print('Sanity check')
+    print(rnf_map_newnum.max())
+    print(len(rivers_newnum))
+
+    if int(rnf_map_newnum.max()) != len(rivers_newnum)-1:
+        raise ValueError('Inconsistency between number of basins and rivers!!')
+
+    return rnf_map_newnum, rivers_newnum, not_assigned
 
 
 def iter_track(flowdir, basin_thres = 50, riv_thres = 30, dir_thres = 1, lat = None, n_iter = 5):
@@ -355,10 +372,14 @@ def iter_track(flowdir, basin_thres = 50, riv_thres = 30, dir_thres = 1, lat = N
 
     rnf_map_merged, rivers_merged, rivers, rivers_dir = track_rivers_and_merge(big_rivers, big_rivers_dir, flowdir = flowdir, riv_thres = riv_thres, dir_thres = dir_thres, use_expanded = True, weight_for_lat = False, lat = lat)
 
-    ### Now, loop: keep only largest, assign remaining according to a fixed rivers_merged (not updating and not adding new rivers)
-    rnf_map_merged_final, not_assigned = drop_assign_fill(rnf_map_merged, rivers, rivers_dir, lat = lat, basin_thres = basin_thres)
+    print('Check!!')
+    print(rnf_map_merged.min(), rnf_map_merged.max())
+    print(len(rivers_merged))
 
-    return rnf_map_merged_final, rivers_merged, rivers, not_assigned
+    ### Now, loop: keep only largest, assign remaining according to a fixed rivers_merged (not updating and not adding new rivers)
+    rnf_map_merged_final, rivers_final, not_assigned = drop_assign_fill(rnf_map_merged, rivers_merged, rivers, rivers_dir, lat = lat, basin_thres = basin_thres)
+
+    return rnf_map_merged_final, rivers_final, rivers, not_assigned
 
 
 def create_basin_data(output_file, ds_target, drainage_basin_id, arrival_point_id, calving_point_id, lon_source, lat_source, method='nearest_s2d'):
@@ -441,8 +462,13 @@ if __name__ == "__main__":
         for po in rivers_merged_final[num]:
             arrival_id[po[0], po[1]] = num
 
-    ## Setting calving to zero
-    calving_id = np.zeros(arrival_id.shape)-2
+    print('Check!')
+    print(rnf_map_merged_final.min(), rnf_map_merged_final.max())
+    print(arrival_id.min(), arrival_id.max())
+
+    ## Setting calving equal to runoff
+    print("WARNING!! Setting calving_id equal to arrival_id! To be changed if ice sheets are present")
+    calving_id = arrival_id.copy()
 
     rnf_pd = xr.load_dataset(args.runoff_file)
     create_basin_data('runoff_map_new.nc', rnf_pd, rnf_map_merged_final, arrival_id, calving_id, oroslope.longitude, oroslope.latitude)
