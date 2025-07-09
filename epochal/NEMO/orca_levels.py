@@ -9,12 +9,12 @@ Date: July 2025
 """
 
 # in CDO (not working yet):
-# cdo setzaxis,L75.txt woa13-levitus.nc woa13-levitus-L75.nc
-# cdo intlevel,zdescription=L31.txt woa13-levitus-L75.nc woa13-levitus-L31.nc
-# cdo setgrid,r360x180 woa13-levitus-L31.nc woa13-levitus-L31-r360x180.nc
+# cdo setzaxis,L75.txt woa13-levitus.nc woa13-levitus_L75.nc
+# cdo intlevel,zdescription=L31.txt woa13-levitus_L75.nc woa13-levitus_L31.nc
+# cdo setgrid,r360x180 woa13-levitus_L31.nc woa13-levitus_L31_r360x180.nc
 
 # example:
-# ./orca_levels.py -i /ec/res4/hpcperm/itas/data/ece-4-database/nemo/initial/woa13-levitus.nc -s /ec/res4/hpcperm/itas/data/ece-4-database/nemo/domain/eORCA1/domain_cfg.nc -d /ec/res4/hpcperm/itas/data/ece-4-database/nemo/domain/ORCA2/domain_cfg.nc -o /ec/res4/hpcperm/itas/data/ece-4-database/nemo/initial/woa13-levitus-L31.nc
+# ./orca_levels.py -i /ec/res4/hpcperm/itas/data/ece-4-database/nemo/initial/woa13-levitus.nc -s /ec/res4/hpcperm/itas/data/ece-4-database/nemo/domain/eORCA1/domain_cfg.nc -d /ec/res4/hpcperm/itas/data/ece-4-database/nemo/domain/ORCA2/domain_cfg.nc -o /ec/res4/hpcperm/itas/data/ece-4-database/nemo/initial/woa13-levitus_L31.nc
 
 
 import sys

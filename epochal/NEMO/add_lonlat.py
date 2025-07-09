@@ -8,8 +8,11 @@ Author: Alessandro Sozza (CNR-ISAC)
 Date: July 2025
 """
 
+# in CDO:
+# cdo setgrid,r360x180 woa13-levitus_L31.nc woa13-levitus_L31_r360x180.nc
+
 # example:
-# ./add_lonlat.py -f /ec/res4/hpcperm/itas/data/ece-4-database/nemo/initial/woa13-levitus-L31.nc
+# ./add_lonlat.py -f /ec/res4/hpcperm/itas/data/ece-4-database/nemo/initial/woa13-levitus_L31.nc
 
 import sys
 import os
