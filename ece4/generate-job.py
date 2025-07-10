@@ -20,6 +20,7 @@ from ruamel.yaml.scalarstring import PlainScalarString
 from ruamel.yaml.comments import CommentedMap
 from yaml_util import load_yaml, save_yaml
 from yaml_util import noparse_block, list_block
+import logging
 
 
 def create_folder(expname, config, clean=False):
@@ -38,11 +39,12 @@ def create_folder(expname, config, clean=False):
 
     # if clean is True, remove the existing folder
     if clean:
+        logging.warning(f"Cleaning up the experiment folder: {job_dir}")
         if os.path.exists(job_dir):
             shutil.rmtree(job_dir)
-            print(f"Removed existing job directory: {job_dir}")
+            logging.debug(f"Removed existing job directory: {job_dir}")
         else:
-            print(f"No existing job directory to remove: {job_dir}")
+            logging.debug(f"No existing job directory to remove: {job_dir}")
 
     # check if the folder already exists
     if os.path.exists(job_dir):
@@ -54,7 +56,7 @@ def create_folder(expname, config, clean=False):
     for directory in ["scriptlib", "templates"]:
         shutil.copytree(os.path.join(base_dir, directory), os.path.join(job_dir, directory), dirs_exist_ok=True)
     
-    print(f"Created job directory: {job_dir}")
+    logging.info(f"Created job directory: {job_dir}")
 
 
 def create_launch(expname, config):
@@ -86,7 +88,7 @@ se user-config.yml {expname}.yml ${{platform}} scriptlib/main.yml --loglevel inf
     # Make it executable (if on Unix)
     os.chmod(script_path, 0o755)
 
-    print(f"Bash script written to: {script_path}")
+    logging.info(f"Bash script written to: {script_path}")
 
 
 def generate_user_config(expname, config):
@@ -112,7 +114,7 @@ def generate_user_config(expname, config):
     job_dir = os.path.join(config['job_dir'], expname)
     user_config_file = os.path.join(job_dir, "user-config.yml")
     save_yaml(user_config_file, user_config)
-    print(f"User configuration file written to: {user_config_file}")
+    logging.info(f"User configuration file written to: {user_config_file}")
 
 
 def generate_job(kind, config, expname):
@@ -145,20 +147,30 @@ def generate_job(kind, config, expname):
     context['experiment']['schedule']['all'].value = f"DTSTART:{startdate} RRULE:FREQ={freq};UNTIL={enddate}"
     context['experiment']['schedule']['nlegs'] = config['schedule']['nlegs']
 
+    logging.debug(f"Setting up experiment {expname} with start date {startdate}, end date {enddate}, frequency {freq}, and number of legs {config['schedule']['nlegs']}")
+
     # Set the experiment name
     if kind == 'AMIP':        
         context['model_config']['components'] = list_block(['oifs', 'amipfr', 'xios', 'oasis'])
         context['model_config']['oifs']['grid'] = noparse_block("{{model_config.oifs.all_grids."+config["resolution"]["oifs"]+"}}")
         del context['model_config']['nemo']
+        logging.info("Using AMIP configuration")
+        logging.debug("OIFS resolution is set to %s", config["resolution"]["oifs"])
     elif kind == 'CPLD':
         context['model_config']['components'] = list_block(['oifs', 'nemo', 'rnfm', 'xios', 'oasis'])
         context['model_config']['oifs']['grid'] = noparse_block("{{model_config.oifs.all_grids."+config["resolution"]["oifs"]+"}}")
         context['model_config']['nemo']['grid'] = noparse_block("{{model_config.nemo.all_grids."+config["resolution"]["nemo"]+"}}")
+        logging.info("Using CPLD configuration")
+        logging.debug("OIFS resolution is set to %s", config["resolution"]["oifs"])
+        logging.debug("NEMO resolution is set to %s", config["resolution"]["nemo"])
     elif kind == 'OMIP':
         context['model_config']['components'] = list_block(['nemo', 'xios'])
         context['model_config']['nemo']['grid'] = noparse_block("{{model_config.nemo.all_grids."+config["resolution"]["nemo"]+"}}")
         del context['model_config']['oifs']
         del context['model_config']['oasis']
+        logging.info("Using OMIP configuration")
+        logging.debug("NEMO resolution is set to %s", config["resolution"]["nemo"])
+
 
     # setup job block
     context['job']['launch']['method'] = PlainScalarString(config['launch-method'])
@@ -166,34 +178,54 @@ def generate_job(kind, config, expname):
         context['job']['launch']['shell'] = CommentedMap()
         context['job']['launch']['shell']['script'] = PlainScalarString('run-srun-multiprog.sh')
 
+    # disable resubmit
+    logging.info("Disabling resubmit option!")
+    context['job']['resubmit'] = False
+
+    logging.debug('Running on platform: %s', config['platform'])
+    logging.debug('Using launch method: %s', config['launch-method'])
+    logging.debug('Using account name: %s, queue: %s, execution time: %s', config['account'], 'np', 180)
     context['job']['slurm']['sbatch']['opts']['account']= config["account"]
     context['job']['slurm']['sbatch']['opts']['qos'] = 'np'
-    context['job']['slurm']['sbatch']['opts']['time'] = 180
+    context['job']['slurm']['sbatch']['opts']['time'] = 180 #default 3 hour time
     context['job']['slurm']['sbatch']['opts']['ntasks-per-core'] = 1
+
     
+    # wrapper task set
     if config['launch-method'] == 'slurm-wrapper-taskset':
+        logging.info("Using wrapper-taskset for job configuration, default values for TL63ORCA2 on HPC2020 will be used")
         # delete the not wrapper-tasket block (this might change in the future)
         del exp_base[1]
         exp_base.yaml_set_comment_before_after_key(1, before='\n')
 
-        # default one node configuration for AMIP
+        # default 1 node configuration for AMIP: use openMP with 8 threads and 15 tasks
         if kind == "AMIP":
-            exp_base[1]['base.context']['job']['groups'] = [{'nodes': 1, 'xios': 1, 'oifs': 126, 'amipfr': 1}]
-        # default two node configuration for CPLD
-        elif kind == "CPLD":
+            logging.info("Using default 1 node configuration for AMIP")
+            exp_base[1]['base.context']['job']['oifs']['omp_num_threads'] = 8 
             exp_base[1]['base.context']['job']['groups'] = [
-                { 'nodes': 1, 'xios': 1, 'oifs': 126, 'rnfm': 1 },
-                { 'nodes': 1, 'oifs': 38, 'nemo': 90 },
+                {'nodes': 1, 'xios': 1, 'oifs': 15, 'amipfr': 1}
             ]
-        # default one node configuration for OMIP
-        elif kind == "OMIP":
+        # default 2 node configuration for CPLD: use openMP with 16 threads and 13 tasks
+        # NEMO 46 tasks from here https://github.com/asozza/ecearth-quests/blob/main/ece4/NEMO/best_domain_decomposition_ORCA2.txt
+        elif kind == "CPLD":
+            logging.info("Using default 2 nodes configuration for AMIP")
+            exp_base[1]['base.context']['job']['oifs']['omp_num_threads'] = 16
             exp_base[1]['base.context']['job']['groups'] = [
-                { 'nodes': 1, 'xios': 1, 'nemo': 90 },
+                { 'nodes': 1, 'xios': 1, 'oifs': 5, 'rnfm': 1, 'nemo': 46 },
+                { 'nodes': 1, 'oifs': 8 }
+            ]
+        # default 1 node configuration for OMIP
+        elif kind == "OMIP":
+            logging.info("Using default 1 node configuration for AMIP")
+            del exp_base[1]['base.context']['job']['oifs']
+            exp_base[1]['base.context']['job']['groups'] = [
+                { 'nodes': 1, 'xios': 1, 'nemo': 120 }
             ]
     else:
         # delete the wrapper-taskset block
         del exp_base[2]
 
+        logging.warning('Not using wrapper-taskset, please double check the job configuration')
         # default configurations for AMIP and CPLD
         if kind == "AMIP":
             exp_base[1]['base.context']['job'] = {
@@ -203,21 +235,21 @@ def generate_job(kind, config, expname):
             }
         elif kind == "CPLD":
             exp_base[1]['base.context']['job'] = {
-                'oifs': {'ntasks': 164, 'ntasks_per_node': 128},
-                'nemo': {'ntasks': 90, 'ntasks_per_node': 128},            
+                'oifs': {'ntasks': 208, 'ntasks_per_node': 128},
+                'nemo': {'ntasks': 46, 'ntasks_per_node': 128},            
                 'xios': {'ntasks': 1, 'ntasks_per_node': 1},
                 'rnfm': {'ntasks': 1, 'ntasks_per_node': 1}
             }
         elif kind == "OMIP":
             exp_base[1]['base.context']['job'] = {
-                'nemo': {'ntasks': 90, 'ntasks_per_node': 128},
+                'nemo': {'ntasks': 120, 'ntasks_per_node': 128},
                 'xios': {'ntasks': 1, 'ntasks_per_node': 1}
             }
 
     # write the file
     yaml_path = os.path.join(job_dir, f'{expname}.yml')
     save_yaml(os.path.join(job_dir, f'{expname}.yml'), exp_base)
-    print(f"YAML script script written to: {yaml_path}")
+    logging.info(f"YAML script script written to: {yaml_path}")
 
 
 if __name__ == "__main__":
@@ -227,12 +259,20 @@ if __name__ == "__main__":
     parser.add_argument("-c","--config", type=str, help="YAML configuration file", default="config.yml")
     parser.add_argument("-e", "--expname", type=str, required=True, help="Experiment name (e.g., aa00).")
     parser.add_argument("--clean", action="store_true", help="Clean up the experiment folder.")
+    parser.add_argument("-l", "--loglevel", type=str, default="info", help="Set the logging level (default: info).")
 
     args = parser.parse_args()
     if args.kind.upper() not in ["AMIP", "CPLD", "OMIP"]:
         raise ValueError("Invalid experiment type. Choose either 'AMIP', 'CPLD' or 'OMIP'.")
     if len(args.expname) != 4:
         raise ValueError("Experiment name must be 4 characters long.")
+    
+    numeric_level = getattr(logging, args.loglevel.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError(f"Invalid log level: {args.loglevel}")
+
+    # Set up basic configuration for logging
+    logging.basicConfig(level=numeric_level, format='%(levelname)s: %(message)s')
     
     # load configuration file
     config = load_yaml(args.config, expand_env=True)
