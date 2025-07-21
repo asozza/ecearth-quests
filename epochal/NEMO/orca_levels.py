@@ -20,6 +20,7 @@ Date: July 2025
 import sys
 import os
 import argparse
+
 import xarray as xr
 import numpy as np
 from scipy.interpolate import interp1d
@@ -75,22 +76,23 @@ def main(input_nc, srcdomain_nc, dstdomain_nc, output_nc):
         var = ds[varname]
         
         if axes['z'] not in var.dims:
+            output_vars[varname] = var  # Keep the variable as is if no vertical dimension
             continue  # Skip variables without vertical dimension
 
-        if axes['time']:
+        if axes['time'] in var.dims:
             data = []
             for t in range(var.sizes[axes['time']]):                
                 slice_t = var.isel({axes['time']: t}).values
                 interp_slice = interpolate(slice_t, old_depths, new_depths, axis=0)
                 data.append(interp_slice)
             new_array = np.stack(data, axis=0)
-            new_dims = (axes['time'], axes['z'], axes['y'], axes['x'])
-            new_coords = {axes['time']: ds[axes['time']]}
+            new_dims = var.dims
+            new_coords = var.coords
         else:
             data = var.values
             new_array = interpolate(data, old_depths, new_depths, axis=0)
-            new_dims = (axes['z'], axes['y'], axes['x'])
-            new_coords = {}
+            new_dims = var.dims
+            new_coords = var.coords
             
         output_vars[varname] = xr.DataArray(new_array, dims=new_dims, coords=new_coords, name=varname, attrs=var.attrs)
         

@@ -1,0 +1,101 @@
+&comments
+ -----------------------------------------------------------------------------------
+ - grid_inputs holds parameters for the scripgrid routine which reformats information 
+   about the input grids
+ - scripgrid always needs a coordinates.nc file in the
+   current directory and creates the remapped grid file correspondingly
+ - it uses the following namelist block to determine its actions
+     method:  only 'regular' is yet implemented, this assumes a cartesian grid
+     input_lon: name of longitude variable in the input_file
+     input_lat: name of latitude variable in the input_file
+     nemo_lon: name of longitude variable in the coordinates.nc
+     nemo_lat: name of latitude variable in the coordinates.nc
+/
+&grid_inputs
+    input_file = '/ec/res4/hpcperm/itas/data/ece-4-database/nemo/initial/zdfiwm_forcing_r720x360.nc'
+    nemo_file = '/ec/res4/hpcperm/itas/data/ece-4-database/nemo/domain/ORCA2/domain_cfg.nc'
+    datagrid_file = 'remap_zdfiwm_grid.nc'
+    nemogrid_file = 'remap_orca2_grid.nc'
+    method = 'regular'
+    input_lon = 'longitude'
+    input_lat = 'latitude'
+    nemo_lon = 'glamt'
+    nemo_lat = 'gphit'
+    nemo_mask = 'none'
+    nemo_mask_value = 10
+    input_mask = 'none'
+    input_mask_value = 10
+/
+&comments
+ -----------------------------------------------------------------------------------
+ - remap_inputs holds parameters for the scrip routine which calculates the weights
+   needed to convert between two grids
+ - two remap grid files are required as output by scripgrid
+ - num_maps is either 1 or 2 depending on whether the reverse transformation is required
+ - one or two interp_file names are then supplied; these hold the weights to convert 
+   one grid to another
+ - the map_name variable is just descriptive
+ - map_method can be 'bilinear' 'bicubic' or 'conservative' (the latter untested)
+ - normalize_opt should usually be 'frac' or else the user needs to do this scaling
+   manually (this seems to the case for fractional ice cover)
+ - restrict_type should be 'latitude' or 'latlon' in which case num_srch_bins only are 
+   used in one or two directions
+ - use_grid_area fields override the scrip calculation of area in case the model gets
+   slightly different answers, but the area needs to be supplied in the input files
+ - output_opt may be supplied and set to either 'scrip' or 'ncar-csm'
+/
+&remap_inputs
+    num_maps = 1
+    grid1_file = 'remap_zdfiwm_grid.nc'
+    grid2_file = 'remap_orca2_grid.nc'
+    interp_file1 = 'zdfiwm_orca2_bilin.nc'
+    interp_file2 = 'orca2_zdfiwm_bilin.nc'
+    map1_name = 'orca2 to zdfiwm bilin Mapping'
+    map2_name = 'zdfiwm to orca bilin Mapping'
+    map_method = 'bilinear'
+    normalize_opt = 'frac'
+    output_opt = 'scrip'
+    restrict_type = 'latitude'
+    num_srch_bins = 90 
+    luse_grid1_area = .false.
+    luse_grid2_area = .false.
+/
+
+&interp_inputs
+    input_file = "t_10.15JUNE2009_fill.nc"
+    interp_file = "core2_nordic1_bilin.nc"
+    input_name = "T_10_MOD"
+    input_start = 1,1,1,1
+    input_stride = 1,1,1,1
+    input_stop = 0,0,0,1
+    input_vars = 'initial_time0_hours'
+/
+
+&interp_outputs
+    output_file = "t_10.15JUNE2009_nordic1.nc"
+    output_mode = "create"
+    output_dims = 'x', 'y', 'time_counter'
+    output_scaling = "T_10_MOD|1.0", "time_counter|86400.0"
+    output_name = 'T_10_MOD'
+    output_lon = 'x'
+    output_lat = 'y'
+    output_vars = 'time_counter'
+    output_attributes = 'time_counter|units|seconds since 1995-00-00 00:00:00',
+                        'time_counter|calendar|noleap',
+                        'T_10_MOD|units|mm/s'
+/
+
+&comments
+ -----------------------------------------------------------------------------------
+ -  shape_inputs are the input fields required by scripshape.f90
+ -  first is the interpolation file created by scrip.f90 mapping data to model grid
+ -  second is the name of the output weights file to create
+ -  third is the east-west wrap to assume in the model (needed when calculating gradient 
+          terms in the bicubic scheme); the number is just the number of columns on one side
+          that are repeats of those on the opposite side (-1 for not cyclic)
+/
+&shape_inputs
+    interp_file = 'zdfiwm_orca2_bilin.nc'
+    output_file = 'weights_zdfiwm_reg_ORCA2_bilinear.nc'
+    ew_wrap     = 0
+/
