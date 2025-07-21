@@ -16,11 +16,15 @@ Usage:
 import os
 import shutil
 import argparse
+
+from ruamel.yaml import YAML
 from ruamel.yaml.scalarstring import PlainScalarString
 from ruamel.yaml.comments import CommentedMap
 from yaml_util import load_yaml, save_yaml
-from yaml_util import noparse_block, list_block
+from yaml_util import noparse_block, notag_block, list_block
 
+yaml = YAML()
+yaml.preserve_quotes = True
 
 def create_folder(expname, config, clean=False):
     """
@@ -115,6 +119,45 @@ def generate_user_config(expname, config):
     print(f"User configuration file written to: {user_config_file}")
 
 
+def prepare_tuning_template(config, expname):
+    """
+    Adds custom tuning parameters directly into the jobscript.
+    """
+
+    print('Changing tuning parameters')
+    
+    job_dir = os.path.join(config['job_dir'], expname)
+    src_dir = config['ece_dir']
+    
+    # update tuning template file
+    original_file_path = os.path.join(src_dir, "scripts", "runtime", "templates", "tuning-example.yml")    
+    original_data = load_yaml(original_file_path)
+    base_context = original_data[0]['base.context']
+    model_config = base_context["model_config"]
+
+    # load tuning parameters
+    override_data = load_yaml(config['tuning'])
+
+    # Pulisce completamente il contenuto di model_config
+    for model_key in list(model_config.keys()):
+        if model_key not in override_data:
+            del model_config[model_key]
+
+    # Ricostruisce solo con ciò che c'è nel file di override
+    for model_name, namelist_dict in override_data.items():
+        model_config[model_name] = CommentedMap()
+        model_config[model_name]["tuning"] = CommentedMap()
+
+    for namelist_name, params in namelist_dict.items():
+        model_config[model_name]["tuning"][namelist_name] = CommentedMap(params)
+
+    yaml_path = os.path.join(job_dir, "templates", "tuning-example.yml")
+    save_yaml(yaml_path, base_context)
+    print(f"YAML script script written to: {yaml_path}")
+
+    return None
+
+
 def generate_job(kind, config, expname):
     """
     Generate a job configuration file for the experiment.
@@ -159,6 +202,24 @@ def generate_job(kind, config, expname):
         context['model_config']['nemo']['grid'] = noparse_block("{{model_config.nemo.all_grids."+config["resolution"]["nemo"]+"}}")
         del context['model_config']['oifs']
         del context['model_config']['oasis']
+
+    # activate tuning 
+    if 'tuning' in config:
+        context['model_config']['tuning_file'] = noparse_block("{{se.cli.cwd}}/templates/tuning-example.yml")
+    
+    if 'forcing' in config:
+        if 'cmip' not in context['experiment']['forcing'] or context['experiment']['forcing']['cmip'] is None:
+            context['experiment']['forcing']['cmip'] = dict()
+            context['experiment']['forcing']['cmip']['fixyear'] = -1
+
+        if config['forcing'] == 'historical':
+            context['experiment']['forcing']['cmip']['fixyear'] = -1
+        elif config['forcing'] == 'preindustrial':
+            context['experiment']['forcing']['cmip']['fixyear'] = 1850
+        elif isinstance(config['forcing'], int):
+            context['experiment']['forcing']['cmip']['fixyear'] = config['forcing']
+        else:
+            raise ValueError('forcing not understood, use one of preindustrial, historical or a custom year')
 
     # setup job block
     context['job']['launch']['method'] = PlainScalarString(config['launch-method'])
@@ -241,3 +302,6 @@ if __name__ == "__main__":
     generate_job(args.kind, config, args.expname)
     generate_user_config(args.expname, config)
     create_launch(args.expname, config)
+
+    if 'tuning' in config:
+        prepare_tuning_template(config, args.expname)
