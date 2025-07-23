@@ -26,5 +26,3 @@ dependencies:
   - gsw
   - psutil
   - pip
-  - pip:
-    - -e .
