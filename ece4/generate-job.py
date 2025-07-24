@@ -22,7 +22,7 @@ from ruamel.yaml import YAML
 from ruamel.yaml.scalarstring import PlainScalarString
 from ruamel.yaml.comments import CommentedMap
 from yaml_util import load_yaml, save_yaml
-from yaml_util import noparse_block, notag_block, list_block
+from yaml_util import noparse_block, list_block, notag_block
 
 yaml = YAML()
 yaml.preserve_quotes = True
