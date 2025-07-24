@@ -12,31 +12,34 @@
 platform: "ecmwf-hpc2020-intel+openmpi.yml"
 
 # where do you want to put your job scripts
-job_dir: "/lus/h2resw01/hpcperm/ccpd/ecearth4/jobs"
+job_dir: "/hpcperm/ecearth4/jobs"
 
 # main folder where the experiment will be run
-run_dir: "${SCRATCH}/ece4"
+run_dir: "/scratch/ece4"
 
 # where the ecearth4 code is
-ece_dir: "/lus/h2resw01/hpcperm/ccpd/ecearth4/revisions/main"
+ece_dir: "/hpcperm/ecearth4/src"
 
 # where the initial data of ecearth4 are (ensure that cmip6-data is properly loaded)
-ini_dir: "/ec/res4/hpcperm/itas/data/ece-4-database"
+ini_dir: "/hpcperm/ece-4-database"
 
 # account for billing
-account: "spitsozz"
+account: "hpcaccount"
 
 # schedule settings
 schedule:
   start: 19900101
   end: 19910101
-  freq: MONTHLY # DAILY, MONTHLY, YEARLY
+  freq: YEARLY # DAILY, MONTHLY, YEARLY
   nlegs: 1 # number of legs
 
 # model resolution
 resolution:
-  oifs: TL159L91
-  nemo: eORCA1L75
+  oifs: TL63L31
+  nemo: ORCA2L31
 
 # slurm launch method
 launch-method: "slurm-wrapper-taskset" # slurm-hetjob, slurm-mp-taskset, slurm-shell, slurm-wrapper-taskset
+
+# tuning file
+#tuning: tuning_params.yml

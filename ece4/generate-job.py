@@ -217,20 +217,6 @@ def generate_job(kind, config, expname):
     # activate tuning 
     if 'tuning' in config:
         context['model_config']['tuning_file'] = noparse_block("{{se.cli.cwd}}/templates/tuning-example.yml")
-    
-    # set forcing
-    if 'forcing' in config:
-        if 'cmip' not in context['experiment']['forcing'] or context['experiment']['forcing']['cmip'] is None:
-            context['experiment']['forcing']['cmip'] = dict()
-            context['experiment']['forcing']['cmip']['fixyear'] = -1
-        if config['forcing'] == 'historical':
-            context['experiment']['forcing']['cmip']['fixyear'] = -1
-        elif config['forcing'] == 'preindustrial':
-            context['experiment']['forcing']['cmip']['fixyear'] = 1850
-        elif isinstance(config['forcing'], int):
-            context['experiment']['forcing']['cmip']['fixyear'] = config['forcing']
-        else:
-            raise ValueError('forcing not understood, use one of preindustrial, historical or a custom year')
 
     # setup job block
     context['job']['launch']['method'] = PlainScalarString(config['launch-method'])
