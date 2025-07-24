@@ -260,9 +260,9 @@ def generate_job(kind, config, expname):
                 { 'nodes': 1, 'xios': 1, 'oifs': 5, 'rnfm': 1, 'nemo': 46 },
                 { 'nodes': 1, 'oifs': 8 }
             ]
-        # default one node configuration for OMIP
+        # default 1 node configuration for OMIP
         elif kind == "OMIP":
-            logging.info("Using default 2 nodes configuration for OMIP")
+            logging.info("Using default 1 nodes configuration for OMIP")
             exp_base[1]['base.context']['job']['groups'] = [
                 { 'nodes': 1, 'xios': 1, 'nemo': 118 },
             ]
