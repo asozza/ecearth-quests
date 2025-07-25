@@ -5,8 +5,9 @@
 #SBATCH --ntasks=10
 #SBATCH --cpus-per-task=1
 #SBATCH --time=02:00:00
-#SBATCH --output=~/log_compile_ece4.%j.out
-#SBATCH --error=~/log_compile_ece4.%j.out
+#SBATCH --mem=32G
+#SBATCH --output=log_compile_ece4.%j.out
+#SBATCH --error=log_compile_ece4.%j.out
 #SBATCH --account=spitsozz
 
 ECEDIR=/lus/h2resw01/hpcperm/$USER/ecearth4/revisions/main
