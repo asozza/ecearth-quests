@@ -593,10 +593,71 @@ class EoceneOIFS():
         vegetation_ds.to_netcdf(output_path)
 
         return output_path
+    def create_ocean_init(self, woa_file, domain_file, so_value=34.7, output_file=None):
+        """
+        Create ocean initial conditions (thetao and so) for NEMO
+        based on WOA climatology and an idealized temperature profile.
+
+        Parameters
+        ----------
+        woa_file : str
+            Path to WOA netCDF file (will be overwritten with new fields).
+        domain_file : str
+            Path to NEMO domain_cfg file (for nav_lev depths).
+        so_value : float
+            Salinity to assign everywhere (default = 34.7).
+        """
+
+        # Open with dask for scalability
+        woa = xr.open_dataset(woa_file, chunks={"z": 1})
+        domain = xr.open_dataset(domain_file)
+
+        # Assign depths from domain_cfg
+        woa = woa.assign_coords(z=domain["nav_lev"])
+
+        # Extract coordinates
+        depths = woa["z"].values       # (nz,)
+        lat = woa["lat"].values   # (ny, nx) usually
+        lon = woa["lon"].values   # (ny, nx) usually
+        lat_rad = np.deg2rad(lat)
+
+        # Build 3D mesh (depth, lat, lon)
+        Z, LAT, LON = np.meshgrid(depths, lat_rad[:, 0], lon[0, :], indexing="ij")
 
 
+        # Temperature profile formula
+        thetao = np.where(
+            Z <= 1000,
+            ((1000 - Z) / 1000) * 25 * np.cos(LAT) + 10,
+            10,
+        )
 
+        # Salinity constant
+        so = np.full_like(thetao, so_value)
+        
+        # Assign back to dataset as DataArrays
+        woa = woa.assign(
+            thetao=(("z", "y", "x"), thetao),
+            so=(("z", "y", "x"), so),
+        )
+        
+        
+        # === Decide output path ===
+        if output_file is None:
+            base, ext = os.path.splitext(woa_file)
+            output_file = f"{base}_new{ext}"
 
+        # === Overwrite-safe save ===
+        if os.path.exists(output_file):
+            os.remove(output_file)
+
+        woa.to_netcdf(output_file, mode="w")
+
+        print(f"Ocean initial conditions written to {output_file}")
+
+        return woa
+
+       
 
 
 
