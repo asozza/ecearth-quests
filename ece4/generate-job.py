@@ -211,7 +211,7 @@ def generate_job(kind, config, expname):
             logging.info("Using default 2 nodes configuration for AMIP")
             exp_base[1]['base.context']['job']['oifs']['omp_num_threads'] = 16
             exp_base[1]['base.context']['job']['groups'] = [
-                { 'nodes': 1, 'xios': 1, 'oifs': 5, 'rnfm': 1, 'nemo': 46 },
+                { 'nodes': 1, 'xios': 3, 'oifs': 4, 'rnfm': 1, 'nemo': 60 },
                 { 'nodes': 1, 'oifs': 8 }
             ]
         # default 1 node configuration for OMIP
