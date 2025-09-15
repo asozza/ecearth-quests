@@ -4,8 +4,8 @@
 #SBATCH --qos=nf
 #SBATCH --ntasks=10
 #SBATCH --cpus-per-task=1
-#SBATCH --time=02:00:00
-#SBATCH --mem=32G
+#SBATCH --time=04:00:00
+#SBATCH --mem=65G
 #SBATCH --output=log_compile_ece4.%j.out
 #SBATCH --error=log_compile_ece4.%j.out
 #SBATCH --account=spitsozz
@@ -21,7 +21,7 @@ source $whereconda/etc/profile.d/conda.sh
 conda activate ece4
 cd $ECESOURCES
 
-components="oifs"
+components=""
 
 if [ -z "$components" ]; then
     se user-settings.yml ../platforms/$platform compile-components.yml
