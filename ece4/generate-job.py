@@ -152,20 +152,20 @@ def generate_job(kind, config, expname):
     # Set the experiment name
     if kind == 'AMIP':        
         context['model_config']['components'] = list_block(['oifs', 'amipfr', 'xios', 'oasis'])
-        context['model_config']['oifs']['grid'] = noparse_block("{{model_config.oifs.all_grids."+config["resolution"]["oifs"]+"}}")
+        context['model_config']['oifs']['grid'] = config["resolution"]["oifs"]
         del context['model_config']['nemo']
         logging.info("Using AMIP configuration")
         logging.debug("OIFS resolution is set to %s", config["resolution"]["oifs"])
     elif kind == 'CPLD':
         context['model_config']['components'] = list_block(['oifs', 'nemo', 'rnfm', 'xios', 'oasis'])
-        context['model_config']['oifs']['grid'] = noparse_block("{{model_config.oifs.all_grids."+config["resolution"]["oifs"]+"}}")
-        context['model_config']['nemo']['grid'] = noparse_block("{{model_config.nemo.all_grids."+config["resolution"]["nemo"]+"}}")
+        context['model_config']['oifs']['grid'] = config["resolution"]["oifs"]
+        context['model_config']['nemo']['grid'] = config["resolution"]["nemo"]
         logging.info("Using CPLD configuration")
         logging.debug("OIFS resolution is set to %s", config["resolution"]["oifs"])
         logging.debug("NEMO resolution is set to %s", config["resolution"]["nemo"])
     elif kind == 'OMIP':
         context['model_config']['components'] = list_block(['nemo', 'xios'])
-        context['model_config']['nemo']['grid'] = noparse_block("{{model_config.nemo.all_grids."+config["resolution"]["nemo"]+"}}")
+        context['model_config']['nemo']['grid'] = config["resolution"]["nemo"]
         del context['model_config']['oifs']
         del context['model_config']['oasis']
         logging.info("Using OMIP configuration")
