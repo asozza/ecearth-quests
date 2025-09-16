@@ -16,17 +16,15 @@ Usage:
 import os
 import shutil
 import argparse
-import logging
-
-from ruamel.yaml import YAML
 from ruamel.yaml.scalarstring import PlainScalarString
 from ruamel.yaml.comments import CommentedMap
 from yaml_util import load_yaml, save_yaml
 from yaml_util import noparse_block, list_block
-from yaml_util import notag_block
+import logging
 
-yaml = YAML()
-yaml.preserve_quotes = True
+#from ruamel.yaml import YAML
+#yaml = YAML()
+#yaml.preserve_quotes = True
 
 def create_folder(expname, config, clean=False):
     """
@@ -93,7 +91,7 @@ se user-config.yml {expname}.yml ${{platform}} scriptlib/main.yml --loglevel inf
     # Make it executable (if on Unix)
     os.chmod(script_path, 0o755)
 
-    print(f"Bash script written to: {script_path}")
+    logging.info(f"Bash script written to: {script_path}")
 
 
 def generate_user_config(expname, config):
@@ -235,7 +233,7 @@ def generate_job(kind, config, expname):
     logging.debug('Using account name: %s, queue: %s, execution time: %s', config['account'], 'np', 180)
     context['job']['slurm']['sbatch']['opts']['account']= config["account"]
     context['job']['slurm']['sbatch']['opts']['qos'] = 'np'
-    context['job']['slurm']['sbatch']['opts']['time'] = 180
+    context['job']['slurm']['sbatch']['opts']['time'] = 180 # default 3 hour time
     context['job']['slurm']['sbatch']['opts']['ntasks-per-core'] = 1
     
     # wrapper task set
@@ -258,14 +256,14 @@ def generate_job(kind, config, expname):
             logging.info("Using default 2 nodes configuration for CPLD")
             exp_base[1]['base.context']['job']['oifs']['omp_num_threads'] = 16
             exp_base[1]['base.context']['job']['groups'] = [
-                { 'nodes': 1, 'xios': 1, 'oifs': 5, 'rnfm': 1, 'nemo': 46 },
+                { 'nodes': 1, 'xios': 3, 'oifs': 4, 'rnfm': 1, 'nemo': 60 },
                 { 'nodes': 1, 'oifs': 8 }
             ]
         # default 1 node configuration for OMIP
         elif kind == "OMIP":
             logging.info("Using default 1 nodes configuration for OMIP")
             exp_base[1]['base.context']['job']['groups'] = [
-                { 'nodes': 1, 'xios': 1, 'nemo': 118 },
+                { 'nodes': 1, 'xios': 1, 'nemo': 120 },
             ]
     else:
         # delete the wrapper-taskset block
