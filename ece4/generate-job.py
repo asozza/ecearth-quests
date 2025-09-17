@@ -45,9 +45,9 @@ def create_folder(expname, config, clean=False):
         logging.warning(f"Cleaning up the experiment folder: {job_dir}")
         if os.path.exists(job_dir):
             shutil.rmtree(job_dir)
-            print(f"Removed existing job directory: {job_dir}")
+            logging.debug(f"Removed existing job directory: {job_dir}")
         else:
-            print(f"No existing job directory to remove: {job_dir}")
+            logging.debug(f"No existing job directory to remove: {job_dir}")
 
     # check if the folder already exists
     if os.path.exists(job_dir):
@@ -194,20 +194,20 @@ def generate_job(kind, config, expname):
     # Set the experiment name
     if kind == 'AMIP':        
         context['model_config']['components'] = list_block(['oifs', 'amipfr', 'xios', 'oasis'])
-        context['model_config']['oifs']['grid'] = noparse_block("{{model_config.oifs.all_grids."+config["resolution"]["oifs"]+"}}")
+        context['model_config']['oifs']['grid'] = config["resolution"]["oifs"]
         del context['model_config']['nemo']
         logging.info("Using AMIP configuration")
         logging.debug("OIFS resolution is set to %s", config["resolution"]["oifs"])
     elif kind == 'CPLD':
         context['model_config']['components'] = list_block(['oifs', 'nemo', 'rnfm', 'xios', 'oasis'])
-        context['model_config']['oifs']['grid'] = noparse_block("{{model_config.oifs.all_grids."+config["resolution"]["oifs"]+"}}")
-        context['model_config']['nemo']['grid'] = noparse_block("{{model_config.nemo.all_grids."+config["resolution"]["nemo"]+"}}")
+        context['model_config']['oifs']['grid'] = config["resolution"]["oifs"]
+        context['model_config']['nemo']['grid'] = config["resolution"]["nemo"]
         logging.info("Using CPLD configuration")
         logging.debug("OIFS resolution is set to %s", config["resolution"]["oifs"])
         logging.debug("NEMO resolution is set to %s", config["resolution"]["nemo"])
     elif kind == 'OMIP':
         context['model_config']['components'] = list_block(['nemo', 'xios'])
-        context['model_config']['nemo']['grid'] = noparse_block("{{model_config.nemo.all_grids."+config["resolution"]["nemo"]+"}}")
+        context['model_config']['nemo']['grid'] = config["resolution"]["nemo"]
         del context['model_config']['oifs']
         del context['model_config']['oasis']
         logging.info("Using OMIP configuration")
@@ -233,12 +233,12 @@ def generate_job(kind, config, expname):
     logging.debug('Using account name: %s, queue: %s, execution time: %s', config['account'], 'np', 180)
     context['job']['slurm']['sbatch']['opts']['account']= config["account"]
     context['job']['slurm']['sbatch']['opts']['qos'] = 'np'
-    context['job']['slurm']['sbatch']['opts']['time'] = 180 # default 3 hour time
+    context['job']['slurm']['sbatch']['opts']['time'] = 180 #default 3 hour time
     context['job']['slurm']['sbatch']['opts']['ntasks-per-core'] = 1
     
     # wrapper task set
     if config['launch-method'] == 'slurm-wrapper-taskset':
-        logging.info("Using wrapper-taskset for job configuration, default values for TL63ORCA2 on HPC2020 will be used")        
+        logging.info("Using wrapper-taskset for job configuration, default values for TL63ORCA2 on HPC2020 will be used")
         # delete the not wrapper-tasket block (this might change in the future)
         del exp_base[1]
         exp_base.yaml_set_comment_before_after_key(1, before='\n')
@@ -263,7 +263,7 @@ def generate_job(kind, config, expname):
         elif kind == "OMIP":
             logging.info("Using default 1 nodes configuration for OMIP")
             exp_base[1]['base.context']['job']['groups'] = [
-                { 'nodes': 1, 'xios': 1, 'nemo': 120 },
+                { 'nodes': 1, 'xios': 1, 'nemo': 120 }
             ]
     else:
         # delete the wrapper-taskset block
@@ -286,14 +286,14 @@ def generate_job(kind, config, expname):
             }
         elif kind == "OMIP":
             exp_base[1]['base.context']['job'] = {
-                'nemo': {'ntasks': 118, 'ntasks_per_node': 128},
+                'nemo': {'ntasks': 120, 'ntasks_per_node': 128},
                 'xios': {'ntasks': 1, 'ntasks_per_node': 1}
             }
 
     # write the file
     yaml_path = os.path.join(job_dir, f'{expname}.yml')
     save_yaml(os.path.join(job_dir, f'{expname}.yml'), exp_base)
-    print(f"YAML script script written to: {yaml_path}")
+    logging.info(f"YAML script script written to: {yaml_path}")
 
 
 if __name__ == "__main__":
