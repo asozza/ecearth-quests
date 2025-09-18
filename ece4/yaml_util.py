@@ -81,12 +81,6 @@ def noparse_block(value):
     """
     return TaggedScalar(value, tag="!noparse", style='"')
 
-def notag_block(value):
-    """
-    Create a block scalar with no tag.
-    """
-    return TaggedScalar(value, style='"')
-
 def list_block(value):
     """
     Create a PlanScalar with a list
