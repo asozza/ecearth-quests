@@ -23,6 +23,41 @@ from yaml_util import noparse_block, list_block
 import logging
 
 
+def configure_cores_taskset(exp_base, mode, resolution):
+
+    # default 1 node configuration for AMIP: use openMP with 8 threads and 15 tasks
+    if mode == "AMIP":
+        if resolution["oifs"] != "TL63L31":
+            logging.warning("Default AMIP configuration is for TL63, please double check the job configuration")
+        logging.info(f"Using default 1 node configuration for {mode}")
+        exp_base[1]['base.context']['job']['oifs']['omp_num_threads'] = 4 
+        exp_base[1]['base.context']['job']['groups'] = [
+            {'nodes': 1, 'xios': 1, 'oifs': 31, 'amipfr': 1}
+        ]
+    # default 2 node configuration for CPLD: use openMP with 16 threads and 13 tasks
+    # NEMO 46 tasks from here https://github.com/asozza/ecearth-quests/blob/main/ece4/NEMO/best_domain_decomposition_ORCA2.txt
+    elif mode == "CPLD":
+        if resolution["oifs"] != "TL63L31":
+            logging.warning("Default CPLD configuration is for TL63, please double check the job configuration")
+        if resolution["nemo"] not in ["ORCA2L31", "PALEORCA2L31"]:
+            logging.warning("Default CPLD configuration is for ORCA2/PALEORCA, please double check the job configuration")
+        logging.info(f"Using default 2 nodes configuration for {mode}")
+        exp_base[1]['base.context']['job']['oifs']['omp_num_threads'] = 4
+        exp_base[1]['base.context']['job']['groups'] = [
+            { 'nodes': 1, 'xios': 3, 'oifs': 16, 'rnfm': 1, 'nemo': 60 },
+            { 'nodes': 1, 'oifs': 32 }
+        ]
+    # default 1 node configuration for OMIP
+    elif mode == "OMIP":
+        logging.warning("Default OMIP configuration is UNTESTED! Please double check the job configuration")
+        logging.info(f"Using default 1 node configuration for {mode}")
+        del exp_base[1]['base.context']['job']['oifs']
+        exp_base[1]['base.context']['job']['groups'] = [
+            { 'nodes': 1, 'xios': 1, 'nemo': 122 }
+        ]
+
+    return exp_base
+
 def create_folder(expname, config, clean=False):
     """
     Create a new folder for the experiment.
@@ -197,30 +232,7 @@ def generate_job(kind, config, expname):
         # delete the not wrapper-tasket block (this might change in the future)
         del exp_base[1]
         exp_base.yaml_set_comment_before_after_key(1, before='\n')
-
-        # default 1 node configuration for AMIP: use openMP with 8 threads and 15 tasks
-        if kind == "AMIP":
-            logging.info("Using default 1 node configuration for AMIP")
-            exp_base[1]['base.context']['job']['oifs']['omp_num_threads'] = 8 
-            exp_base[1]['base.context']['job']['groups'] = [
-                {'nodes': 1, 'xios': 1, 'oifs': 15, 'amipfr': 1}
-            ]
-        # default 2 node configuration for CPLD: use openMP with 16 threads and 13 tasks
-        # NEMO 46 tasks from here https://github.com/asozza/ecearth-quests/blob/main/ece4/NEMO/best_domain_decomposition_ORCA2.txt
-        elif kind == "CPLD":
-            logging.info("Using default 2 nodes configuration for AMIP")
-            exp_base[1]['base.context']['job']['oifs']['omp_num_threads'] = 16
-            exp_base[1]['base.context']['job']['groups'] = [
-                { 'nodes': 1, 'xios': 3, 'oifs': 4, 'rnfm': 1, 'nemo': 60 },
-                { 'nodes': 1, 'oifs': 8 }
-            ]
-        # default 1 node configuration for OMIP
-        elif kind == "OMIP":
-            logging.info("Using default 1 node configuration for AMIP")
-            del exp_base[1]['base.context']['job']['oifs']
-            exp_base[1]['base.context']['job']['groups'] = [
-                { 'nodes': 1, 'xios': 1, 'nemo': 120 }
-            ]
+        exp_base = configure_cores_taskset(exp_base, mode=kind, resolution=config["resolution"])
     else:
         # delete the wrapper-taskset block
         del exp_base[2]
@@ -255,9 +267,9 @@ def generate_job(kind, config, expname):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Generate job configuration for experiments.")
-    parser.add_argument("-k", "--kind", type=str, required=True, help="Type of experiment (e.g., AMIP, CPLD, OMIP).")
+    parser.add_argument("-k", "--kind", type=str, help="Type of experiment (e.g., AMIP, CPLD, OMIP).", default="CPLD")
     parser.add_argument("-c","--config", type=str, help="YAML configuration file", default="config.yml")
-    parser.add_argument("-e", "--expname", type=str, required=True, help="Experiment name (e.g., aa00).")
+    parser.add_argument("expname", type=str, help="Experiment name (e.g., aa00).")
     parser.add_argument("--clean", action="store_true", help="Clean up the experiment folder.")
     parser.add_argument("-l", "--loglevel", type=str, default="info", help="Set the logging level (default: info).")
 
