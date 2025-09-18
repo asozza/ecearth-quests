@@ -42,4 +42,4 @@ resolution:
 launch-method: "slurm-wrapper-taskset" # slurm-hetjob, slurm-mp-taskset, slurm-shell, slurm-wrapper-taskset
 
 # tuning file
-#tuning: tuning_params.yml
+tuning: tuning-default.yml
