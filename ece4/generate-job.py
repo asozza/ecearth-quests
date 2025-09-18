@@ -22,6 +22,9 @@ from yaml_util import load_yaml, save_yaml
 from yaml_util import noparse_block, list_block
 import logging
 
+#from ruamel.yaml import YAML
+#yaml = YAML()
+#yaml.preserve_quotes = True
 
 def configure_cores_taskset(exp_base, mode, resolution):
 
@@ -206,7 +209,23 @@ def generate_job(kind, config, expname):
         logging.info("Using OMIP configuration")
         logging.debug("NEMO resolution is set to %s", config["resolution"]["nemo"])
 
+    # initial conditions
+    if kind != "AMIP":
+        logging.warning("Using initial conditions for ocean: WOA13")
+        level = 'L31' if config['resolution']['nemo'] in ['PALEORCA2L31', 'ORCA2L31'] else 'L75'
+        grid = config['resolution']['nemo'].replace(level, "")
+        context['experiment']['nemo']['start_from']['ts_state']['file'] = f'woa13-levitus-{level}.nc'
+        context['experiment']['nemo']['start_from']['ts_state']['weight_file'] = f'weights_WOA13d1_2_{grid}_bilinear.nc'
 
+    # activate tuning 
+    if 'tuning' in config:
+        logging.info("Using tuning file: %s", config['tuning'])
+        if not os.path.exists(os.path.join("tuning", config['tuning'])):
+            raise ValueError(f"Tuning file {config['tuning']} not found in tuning directory.")
+        shutil.copy(os.path.join("tuning", config['tuning']), os.path.join(job_dir, "templates", config['tuning']))
+        os.remove(os.path.join(job_dir, "templates", "tuning-example.yml"))
+        context['model_config']['tuning_file'] = noparse_block("{{se.cli.cwd}}/templates/"+config['tuning'])
+    
     # setup job block
     context['job']['launch']['method'] = PlainScalarString(config['launch-method'])
     if config['launch-method'] != 'slurm-wrapper-taskset':
@@ -217,6 +236,7 @@ def generate_job(kind, config, expname):
     logging.info("Disabling resubmit option!")
     context['job']['resubmit'] = False
 
+    # set account and queue
     logging.debug('Running on platform: %s', config['platform'])
     logging.debug('Using launch method: %s', config['launch-method'])
     logging.debug('Using account name: %s, queue: %s, execution time: %s', config['account'], 'np', 180)
@@ -278,14 +298,12 @@ if __name__ == "__main__":
         raise ValueError("Invalid experiment type. Choose either 'AMIP', 'CPLD' or 'OMIP'.")
     if len(args.expname) != 4:
         raise ValueError("Experiment name must be 4 characters long.")
-    
     numeric_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(numeric_level, int):
         raise ValueError(f"Invalid log level: {args.loglevel}")
 
     # Set up basic configuration for logging
     logging.basicConfig(level=numeric_level, format='%(levelname)s: %(message)s')
-    
     # load configuration file
     config = load_yaml(args.config, expand_env=True)
 
@@ -293,3 +311,4 @@ if __name__ == "__main__":
     generate_job(args.kind, config, args.expname)
     generate_user_config(args.expname, config)
     create_launch(args.expname, config)
+
