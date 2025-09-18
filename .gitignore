@@ -4,3 +4,4 @@
 *.egg-info/
 martini/nam_*
 ece4/config.yml
+ece4/log*
