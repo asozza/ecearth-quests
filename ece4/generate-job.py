@@ -215,6 +215,7 @@ def generate_job(kind, config, expname):
         if not os.path.exists(os.path.join("tuning", config['tuning'])):
             raise ValueError(f"Tuning file {config['tuning']} not found in tuning directory.")
         shutil.copy(os.path.join("tuning", config['tuning']), os.path.join(job_dir, "templates", config['tuning']))
+        os.remove(os.path.join(job_dir, "templates", "tuning-example.yml"))
         context['model_config']['tuning_file'] = noparse_block("{{se.cli.cwd}}/templates/"+config['tuning'])
     
     # setup job block
