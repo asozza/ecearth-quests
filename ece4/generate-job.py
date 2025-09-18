@@ -120,45 +120,6 @@ def generate_user_config(expname, config):
     logging.info(f"User configuration file written to: {user_config_file}")
 
 
-def prepare_tuning_template(config, expname):
-    """
-    Adds custom tuning parameters directly into the jobscript.
-    """
-
-    print('Changing tuning parameters')
-    
-    job_dir = os.path.join(config['job_dir'], expname)
-    src_dir = config['ece_dir']
-    
-    # update tuning template file
-    original_file_path = os.path.join(src_dir, "scripts", "runtime", "templates", "tuning-example.yml")    
-    original_data = load_yaml(original_file_path)
-    base_context = original_data[0]['base.context']
-    model_config = base_context["model_config"]
-
-    # load tuning parameters
-    override_data = load_yaml(config['tuning'])
-
-    # Pulisce completamente il contenuto di model_config
-    for model_key in list(model_config.keys()):
-        if model_key not in override_data:
-            del model_config[model_key]
-
-    # Ricostruisce solo con ciò che c'è nel file di override
-    for model_name, namelist_dict in override_data.items():
-        model_config[model_name] = CommentedMap()
-        model_config[model_name]["tuning"] = CommentedMap()
-
-    for namelist_name, params in namelist_dict.items():
-        model_config[model_name]["tuning"][namelist_name] = CommentedMap(params)
-
-    yaml_path = os.path.join(job_dir, "templates", "tuning-example.yml")
-    save_yaml(yaml_path, base_context)
-    print(f"YAML script script written to: {yaml_path}")
-
-    return None
-
-
 def generate_job(kind, config, expname):
     """
     Generate a job configuration file for the experiment.
@@ -215,8 +176,12 @@ def generate_job(kind, config, expname):
 
     # activate tuning 
     if 'tuning' in config:
-        context['model_config']['tuning_file'] = noparse_block("{{se.cli.cwd}}/templates/tuning-example.yml")
-
+        logging.info("Using tuning file: %s", config['tuning'])
+        if not os.path.exists(os.path.join("tuning", config['tuning'])):
+            raise ValueError(f"Tuning file {config['tuning']} not found in tuning directory.")
+        shutil.copy(os.path.join("tuning", config['tuning']), os.path.join(job_dir, "templates", config['tuning']))
+        context['model_config']['tuning_file'] = noparse_block("{{se.cli.cwd}}/templates/"+config['tuning'])
+    
     # setup job block
     context['job']['launch']['method'] = PlainScalarString(config['launch-method'])
     if config['launch-method'] != 'slurm-wrapper-taskset':
