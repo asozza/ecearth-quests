@@ -209,6 +209,14 @@ def generate_job(kind, config, expname):
         logging.info("Using OMIP configuration")
         logging.debug("NEMO resolution is set to %s", config["resolution"]["nemo"])
 
+    # initial conditions
+    if kind != "AMIP":
+        logging.warning("Using initial conditions for ocean: WOA13")
+        level = 'L31' if config['resolution']['nemo'] in ['PALEORCA2L31', 'ORCA2L31'] else 'L75'
+        grid = config['resolution']['nemo'].replace(level, "")
+        context['experiment']['nemo']['start_from']['ts_state']['file'] = f'woa13-levitus-{level}.nc'
+        context['experiment']['nemo']['start_from']['ts_state']['weight_file'] = f'weights_WOA13d1_2_{grid}_bilinear.nc'
+
     # activate tuning 
     if 'tuning' in config:
         logging.info("Using tuning file: %s", config['tuning'])
