@@ -1,0 +1,157 @@
+ 
+    CNRS - NERC - Met OFFICE - MERCATOR-ocean - CMCC
+                        NEMO team
+             Ocean General Circulation Model
+                 NEMO version 4.0  (2020) 
+ 
+            ._      ._      ._      ._      ._    
+        _.-._)`\_.-._)`\_.-._)`\_.-._)`\_.-._)`\_ 
+ 
+            o         _,           _,             
+             o      .' (        .-' /             
+            o     _/..._'.    .'   /              
+       (    o .-'`      ` '-./  _.'               
+        )    ( o)           ;= <_         (       
+       (      '-.,\\__ __.-;`\   '.        )      
+        )  )       \) |`\ \)  '.   \      (   (   
+       (  (           \_/       '-._\      )   )  
+        )  ) jgs                     `    (   (   
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 
+ 
+
+AAAAAAAA
+
+ 
+ par_kind : wp = Working precision = dp = double-precision
+ ~~~~~~~~                                 ****************
+ 
+            
+ domain_cfg : domain size read in domain_cfg file
+ ~~~~~~~~~~ 
+                     iom_nf90_open ~~~ open existing file: domain_cfg.nc in READ
+  mode
+                    ---> domain_cfg.nc OK
+                     iom_close ~~~ close file: domain_cfg.nc ok
+    .
+    ==>>>   UNKNOWN configuration 
+    .
+       nn_cfg =         -999
+       Ni0glo =          180
+       Nj0glo =          174
+       jpkglo =           31
+    Namelist nammpp
+       jpni and jpnj will be calculated automatically
+       avoid use of mpi_allgather at the north fold  ln_nnogather =  T
+       halo width (applies to both rows and columns)       nn_hls =            1
+       choice of communication method                     nn_comm =            1
+                     iom_nf90_open ~~~ open existing file: domain_cfg.nc in READ
+  mode
+                    ---> domain_cfg.nc OK
+ 
+                   For your information:
+   list of the best partitions including land supression
+   -----------------------------------------------------
+ 
+nb_cores oce:    624, land domains excluded:    246 (28.3%), largest oce domain:        64 (      8 x      8 )
+nb_cores oce:    572, land domains excluded:    220 (27.8%), largest oce domain:        70 (      7 x     10 )
+nb_cores oce:    539, land domains excluded:    211 (28.1%), largest oce domain:        72 (      8 x      9 )
+nb_cores oce:    510, land domains excluded:    190 (27.1%), largest oce domain:        77 (     11 x      7 )
+nb_cores oce:    481, land domains excluded:    179 (27.1%), largest oce domain:        80 (      8 x     10 )
+nb_cores oce:    469, land domains excluded:    181 (27.8%), largest oce domain:        81 (      9 x      9 )
+nb_cores oce:    466, land domains excluded:    164 (26.0%), largest oce domain:        84 (     12 x      7 )
+nb_cores oce:    427, land domains excluded:    153 (26.4%), largest oce domain:        88 (     11 x      8 )
+nb_cores oce:    416, land domains excluded:    156 (27.3%), largest oce domain:        90 (      9 x     10 )
+nb_cores oce:    389, land domains excluded:    133 (25.5%), largest oce domain:        96 (     12 x      8 )
+nb_cores oce:    367, land domains excluded:    133 (26.6%), largest oce domain:        99 (     11 x      9 )
+nb_cores oce:    357, land domains excluded:    123 (25.6%), largest oce domain:       104 (      8 x     13 )
+nb_cores oce:    339, land domains excluded:    111 (24.7%), largest oce domain:       108 (     12 x      9 )
+nb_cores oce:    326, land domains excluded:    114 (25.9%), largest oce domain:       110 (     11 x     10 )
+nb_cores oce:    309, land domains excluded:    107 (25.7%), largest oce domain:       117 (      9 x     13 )
+nb_cores oce:    302, land domains excluded:     94 (23.7%), largest oce domain:       120 (     12 x     10 )
+nb_cores oce:    288, land domains excluded:     87 (23.2%), largest oce domain:       126 (     14 x      9 )
+nb_cores oce:    278, land domains excluded:     90 (24.5%), largest oce domain:       130 (     10 x     13 )
+nb_cores oce:    271, land domains excluded:     89 (24.7%), largest oce domain:       132 (     11 x     12 )
+nb_cores oce:    256, land domains excluded:     74 (22.4%), largest oce domain:       140 (     14 x     10 )
+nb_cores oce:    241, land domains excluded:     79 (24.7%), largest oce domain:       143 (     11 x     13 )
+nb_cores oce:    240, land domains excluded:     68 (22.1%), largest oce domain:       150 (     15 x     10 )
+nb_cores oce:    235, land domains excluded:     65 (21.7%), largest oce domain:       153 (     17 x      9 )
+nb_cores oce:    224, land domains excluded:     64 (22.2%), largest oce domain:       156 (     12 x     13 )
+nb_cores oce:    219, land domains excluded:     67 (23.4%), largest oce domain:       160 (     16 x     10 )
+nb_cores oce:    214, land domains excluded:     66 (23.6%), largest oce domain:       165 (     11 x     15 )
+nb_cores oce:    207, land domains excluded:     63 (23.3%), largest oce domain:       168 (     12 x     14 )
+nb_cores oce:    197, land domains excluded:     63 (24.2%), largest oce domain:       176 (     11 x     16 )
+nb_cores oce:    188, land domains excluded:     52 (21.7%), largest oce domain:       182 (     14 x     13 )
+nb_cores oce:    185, land domains excluded:     49 (20.9%), largest oce domain:       192 (     12 x     16 )
+nb_cores oce:    178, land domains excluded:     46 (20.5%), largest oce domain:       195 (     15 x     13 )
+nb_cores oce:    173, land domains excluded:     47 (21.4%), largest oce domain:       198 (     11 x     18 )
+nb_cores oce:    171, land domains excluded:     45 (20.8%), largest oce domain:       204 (     12 x     17 )
+nb_cores oce:    164, land domains excluded:     44 (21.2%), largest oce domain:       208 (     16 x     13 )
+nb_cores oce:    159, land domains excluded:     39 (19.7%), largest oce domain:       216 (     12 x     18 )
+nb_cores oce:    156, land domains excluded:     36 (18.8%), largest oce domain:       221 (     17 x     13 )
+nb_cores oce:    151, land domains excluded:     36 (19.3%), largest oce domain:       234 (     13 x     18 )
+nb_cores oce:    143, land domains excluded:     37 (20.6%), largest oce domain:       238 (     14 x     17 )
+nb_cores oce:    142, land domains excluded:     34 (19.3%), largest oce domain:       247 (     19 x     13 )
+nb_cores oce:    135, land domains excluded:     30 (18.2%), largest oce domain:       252 (     14 x     18 )
+nb_cores oce:    131, land domains excluded:     29 (18.1%), largest oce domain:       260 (     20 x     13 )
+nb_cores oce:    127, land domains excluded:     27 (17.5%), largest oce domain:       270 (     15 x     18 )
+nb_cores oce:    121, land domains excluded:     29 (19.3%), largest oce domain:       280 (     14 x     20 )
+nb_cores oce:    120, land domains excluded:     24 (16.7%), largest oce domain:       286 (     22 x     13 )
+nb_cores oce:    115, land domains excluded:     28 (19.6%), largest oce domain:       288 (     16 x     18 )
+nb_cores oce:    110, land domains excluded:     22 (16.7%), largest oce domain:       306 (     17 x     18 )
+nb_cores oce:    105, land domains excluded:     25 (19.2%), largest oce domain:       320 (     16 x     20 )
+nb_cores oce:     99, land domains excluded:     21 (17.5%), largest oce domain:       336 (     14 x     24 )
+nb_cores oce:     95, land domains excluded:     22 (18.8%), largest oce domain:       352 (     16 x     22 )
+nb_cores oce:     92, land domains excluded:     18 (16.4%), largest oce domain:       360 (     20 x     18 )
+nb_cores oce:     90, land domains excluded:     15 (14.3%), largest oce domain:       378 (     14 x     27 )
+nb_cores oce:     89, land domains excluded:     15 (14.4%), largest oce domain:       384 (     16 x     24 )
+nb_cores oce:     84, land domains excluded:     15 (15.2%), largest oce domain:       396 (     22 x     18 )
+nb_cores oce:     83, land domains excluded:     13 (13.5%), largest oce domain:       408 (     17 x     24 )
+nb_cores oce:     79, land domains excluded:     12 (13.2%), largest oce domain:       432 (     16 x     27 )
+nb_cores oce:     77, land domains excluded:     13 (14.4%), largest oce domain:       434 (     14 x     31 )
+nb_cores oce:     75, land domains excluded:     13 (14.8%), largest oce domain:       450 (     25 x     18 )
+nb_cores oce:     74, land domains excluded:     10 (11.9%), largest oce domain:       459 (     17 x     27 )
+nb_cores oce:     69, land domains excluded:     11 (13.8%), largest oce domain:       480 (     20 x     24 )
+nb_cores oce:     67, land domains excluded:     11 (14.1%), largest oce domain:       496 (     16 x     31 )
+nb_cores oce:     66, land domains excluded:     11 (14.3%), largest oce domain:       504 (     28 x     18 )
+nb_cores oce:     64, land domains excluded:      8 (11.1%), largest oce domain:       527 (     17 x     31 )
+nb_cores oce:     63, land domains excluded:      7 (10.0%), largest oce domain:       540 (     20 x     27 )
+nb_cores oce:     59, land domains excluded:      7 (10.6%), largest oce domain:       576 (     32 x     18 )
+nb_cores oce:     56, land domains excluded:      9 (13.8%), largest oce domain:       592 (     16 x     37 )
+nb_cores oce:     53, land domains excluded:      7 (11.7%), largest oce domain:       620 (     20 x     31 )
+nb_cores oce:     50, land domains excluded:      6 (10.7%), largest oce domain:       672 (     28 x     24 )
+nb_cores oce:     48, land domains excluded:      6 (11.1%), largest oce domain:       682 (     22 x     31 )
+nb_cores oce:     45, land domains excluded:      5 (10.0%), largest oce domain:       740 (     20 x     37 )
+nb_cores oce:     44, land domains excluded:      4 ( 8.3%), largest oce domain:       768 (     32 x     24 )
+nb_cores oce:     42, land domains excluded:      3 ( 6.7%), largest oce domain:       814 (     22 x     37 )
+nb_cores oce:     40, land domains excluded:      4 ( 9.1%), largest oce domain:       846 (     47 x     18 )
+nb_cores oce:     38, land domains excluded:      4 ( 9.5%), largest oce domain:       864 (     32 x     27 )
+nb_cores oce:     37, land domains excluded:      3 ( 7.5%), largest oce domain:       912 (     38 x     24 )
+nb_cores oce:     33, land domains excluded:      3 ( 8.3%), largest oce domain:       992 (     32 x     31 )
+nb_cores oce:     31, land domains excluded:      2 ( 6.1%), largest oce domain:      1116 (     62 x     18 )
+nb_cores oce:     30, land domains excluded:      2 ( 6.2%), largest oce domain:      1128 (     47 x     24 )
+nb_cores oce:     28, land domains excluded:      2 ( 6.7%), largest oce domain:      1178 (     38 x     31 )
+nb_cores oce:     27, land domains excluded:      1 ( 3.6%), largest oce domain:      1269 (     47 x     27 )
+nb_cores oce:     24, land domains excluded:      1 ( 4.0%), largest oce domain:      1406 (     38 x     37 )
+nb_cores oce:     23, land domains excluded:      1 ( 4.2%), largest oce domain:      1457 (     47 x     31 )
+nb_cores oce:     21, land domains excluded:      1 ( 4.5%), largest oce domain:      1656 (     92 x     18 )
+nb_cores oce:     20, land domains excluded:      1 ( 4.8%), largest oce domain:      1674 (     62 x     27 )
+nb_cores oce:     19, land domains excluded:      1 ( 5.0%), largest oce domain:      1739 (     47 x     37 )
+nb_cores oce:     18, land domains excluded:      0 ( 0.0%), largest oce domain:      1920 (     32 x     60 )
+nb_cores oce:     16, land domains excluded:      0 ( 0.0%), largest oce domain:      2162 (     47 x     46 )
+nb_cores oce:     15, land domains excluded:      0 ( 0.0%), largest oce domain:      2280 (     38 x     60 )
+nb_cores oce:     14, land domains excluded:      0 ( 0.0%), largest oce domain:      2484 (     92 x     27 )
+nb_cores oce:     13, land domains excluded:      0 ( 0.0%), largest oce domain:      2816 (     16 x    176 )
+nb_cores oce:     12, land domains excluded:      0 ( 0.0%), largest oce domain:      2820 (     47 x     60 )
+nb_cores oce:     11, land domains excluded:      0 ( 0.0%), largest oce domain:      3276 (    182 x     18 )
+nb_cores oce:     10, land domains excluded:      0 ( 0.0%), largest oce domain:      3382 (     38 x     89 )
+nb_cores oce:      9, land domains excluded:      0 ( 0.0%), largest oce domain:      3720 (     62 x     60 )
+nb_cores oce:      8, land domains excluded:      0 ( 0.0%), largest oce domain:      4183 (     47 x     89 )
+nb_cores oce:      7, land domains excluded:      0 ( 0.0%), largest oce domain:      4914 (    182 x     27 )
+nb_cores oce:      6, land domains excluded:      0 ( 0.0%), largest oce domain:      5518 (     62 x     89 )
+nb_cores oce:      5, land domains excluded:      0 ( 0.0%), largest oce domain:      6688 (     38 x    176 )
+nb_cores oce:      4, land domains excluded:      0 ( 0.0%), largest oce domain:      8188 (     92 x     89 )
+nb_cores oce:      3, land domains excluded:      0 ( 0.0%), largest oce domain:     10912 (     62 x    176 )
+nb_cores oce:      2, land domains excluded:      0 ( 0.0%), largest oce domain:     16192 (     92 x    176 )
+nb_cores oce:      1, land domains excluded:      0 ( 0.0%), largest oce domain:     32032 (    182 x    176 )
+ 
+   -----------------------------------------------------------
