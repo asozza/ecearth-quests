@@ -50,6 +50,8 @@ b) the herold bathymetry for the eocene.
 
 > ⚠️ Note that original eORCA domain file might not have appropriate bounds for remapping. This has to be generated; the `orca_bounds_new.py` file can be used as well as any other experiment output. At this stage, we gathered in `/lus/h2resw01/hpcperm/ccpd/EPOCHAL/ORCA` all the NEMO grid files with remapping weights
 
+The command used to obtain the present day bathymetry
+
 ```bash
 cdo remapnn,coords_bounds.nc \
     -setgrid,path/to/eORCA/eORCA1_grid_T.nc \
@@ -57,12 +59,17 @@ cdo remapnn,coords_bounds.nc \
     /path/to/eORCA1/domain_cfg.nc \
     PALEORCA_bathy_metry_from_eORCA1.nc
 ```
+
+> ⚠️ We tried different approach to generate the bathymetry, making use of different remapping approach (remacon, remapbil, remadis), but none of this provided good results. For example, we obtained bathymetry which leads to blowout NEMO. 
+
+The command to obtain the Eocene bathymetry
+
 ```bash
 cdo chname,topo,bathy_metry \
     -mulc,-1 -setrtoc,0,10000,0 \
     -remapnn,../coords_halo_bounds.nc \
     -selname,topo,lon,lat herold_etal_eocene_topo_1x1.nc \
-    PALEORCA_bathy_metry_fromHerold.n
+    PALEORCA_bathy_metry_fromHerold.nc
 ```
 
 ## 2. Running the DOMAINcfg
@@ -71,7 +78,12 @@ This tool will create the `domain_cfg.nc` and the `mesh_mask.nc` files which are
 
 ### 2.1 Customize Bathymetry 
 
-This is important for the present day bathymetry since the remapping into a lower resolution could produce undesiderable results. To manually open or close specific straits, modify the FORTRAN routine `src/domain_zgr.F90`:
+This is important for the present day bathymetry since the remapping into a lower resolution could produce undesiderable results. 
+We identify two possible approches to obtain the required bathymetry. One involves modify the original tool, the other one is to work with ad-hoc python code to open/close required passages. 
+
+#### 2.1.1 Modify the DOMAINcfg source code (deprecated)
+
+To manually open or close specific straits, modify the FORTRAN routine `src/domzgr.F90`:
 
 Below, you can find an example where Panama and Thailand are connected to the main land and Gibraltar and Red Sea straits are open in the present day bathymetry. This has to be manually verified for each new configuration according to the user needs.
 
@@ -131,6 +143,17 @@ IF( cp_cfg == "paleorca" .AND. jp_cfg == 2 ) THEN    ! PALEORCA configuration
 
 > 🔎 Grid indices in `ncview` differ from Fortran by +2, so adjust accordingly. However, a lot of manual tuning is required. 
 
+
+#### 2.1.2 Modify the DOMAINcfg source code (deprecated)
+
+We wrote a simple tool which manually operates on the straits which provides larger problems, as Gibraltair, and on gulfs which might become closed seas as Baltic or Adriatic. This simply opens the obtained bathymetry, modifies a selected points with ARBITRARY values of depth and store it again. 
+
+The script `process_paleorca_bathymetry.py` and can be executed as 
+
+```python
+./process_paleorca_bathymetry.py /path/to/paleorca/bathymetry
+```
+
 ### 2.2 Compile the tool
 
 Compile the domain tool, available in `sources/nemo-4.2/tools`
@@ -144,6 +167,7 @@ In case you need to make a complete compilation from scratch, you can run a make
 ```bash
 ./maketools -m ecearth -n DOMAINcfg clean
 ```
+> ⚠️ the `clean` flag might not be working as expected
 
 Of course, after each modification you need to recompile the tool. A shortcut for this
 
@@ -183,7 +207,7 @@ Furthermore, you need to adapt the number of points and the name of the configur
    Nj0glo      =     174   !  2nd    -                  -    --> j  =jpjdta
 ```
 
-Finally, to get the `mesh_mask.nc` file together with the `domain_cfg.nc` file from the tool, it is necessary to activate a flag in the `namelist_ref`
+Finally, to get the `mesh_mask.nc` file together with the `domain_cfg.nc` file from the tool, it is necessary to activate a flag in the `namelist_ref` (or overwrite it by adding it in the `namelist_cfg`)
 
 ```fortran
 &namdom
@@ -235,7 +259,6 @@ cdo remapnn,$HPCPERM/coords_new.nc \
 There is a tool `sources/nemo-4.2/tools/WEIGHTS` which with 3 different steps allow for for generating the weights for different input files. 
 
 The two fundamental ones are the `Goutorbe_ghflux.nc`, which is the bottom flux, and `zdfiwm_forcing_r720x360.nc` for the internal gravity waves. Also the `woa13-levitus-L31.nc` migth be necessary since it should provide the the right weights for initiliaziation. Of course, for real paleo applications those files must be different and appropriate weights must be generated. 
-
 
 ### Compile the tool
 
@@ -293,15 +316,11 @@ Once you have a sucessfull run, better a 1-year long one, you can copy the rstos
 
 The creation of a new ORCA grid will require an adaptation of both the EC-Earth scripts and the rdy2cpl ones. 
 
-You need to clone rdy2cpl locally, and install in your env the development version 
+You need to update to the most recent rdy2cpl version by creating a fresh environment or doing `pip install https://github.com/uwefladrich/rdy2cpl.git`
 
-```
-pip install -e . 
-```
+> The update has been merged in this PR: https://github.com/uwefladrich/rdy2cpl/pull/38
 
-> This will change once we can get this merged into them main, there is PR in the repo https://github.com/uwefladrich/rdy2cpl/pull/38
-
-Then, you have to edit one single file `/rdy2cpl/rdy2cpl/grids/base/nemo/orca.py` adding the new configuration in the tuple of definitions. ORCA grids are all the same so they should work smoothly. 
+In case you want to upgrade to a further configuration, you need to edit one single file `/rdy2cpl/rdy2cpl/grids/base/nemo/orca.py` adding the new configuration in the tuple of definitions. ORCA grids are all the same so they should work smoothly. 
 
 ## 8. Modify the EC-Earth script
 
@@ -311,7 +330,6 @@ There area few files that has to be modified:
 - `ece_couple_grids.yml`: create the grid definitions for the coupling
 - `config_nemo.yml`: add the info on the grid
 - `config_oasis.yml`: add the info for the coupling frequency
-
 
 ---
 
