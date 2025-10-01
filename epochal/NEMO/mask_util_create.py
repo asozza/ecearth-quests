@@ -16,8 +16,8 @@ import xarray as xr
 mesh_file = 'mesh_mask.nc'
 domain_file = 'domain_cfg.nc'
 
-default_src_dir = '/lus/h2resw01/hpcperm/ccpd/ecearth4/revisions/main/sources/nemo-4.2/tools/DOMAINcfg'
-default_tgt_dir = '/lus/h2resw01/hpcperm/ccpd/PALEORCA2'
+default_src_dir = '/lus/h2resw01/hpcperm/ccvm/ecearth4/revisions/main/sources/nemo-4.2/tools/DOMAINcfg'
+default_tgt_dir = '/home/ccpd/hpcperm/ECE4-DATA/nemo/domain/PALEORCA2/v6'
 
 def domain_cfg(src_dir, tgt_dir):
     """
