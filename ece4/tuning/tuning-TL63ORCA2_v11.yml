@@ -1,0 +1,23 @@
+- base.context:
+    model_config:
+      oifs:
+        tuning:
+          namcldp:
+            RCLDIFF: 3.5124e-06
+            RCLDIFF_CONVI: 4.1864
+            RLCRITSNOW: 3.7618e-05
+            RSNOWLIN2: 0.029037
+            RVICE: 0.22971
+          namcumf:
+            DETRPEN: 0.00011714
+            ENTRDD: 0.00030569
+            ENTRORG: 0.0025405
+            RMFDEPS: 0.41236
+            RPRCON: 0.0023607
+      nemo:
+        tuning:
+          namzdf_tke:
+              nn_etau: 0
+
+
+
