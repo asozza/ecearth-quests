@@ -1,0 +1,132 @@
+[ECMWF-INFO -sbatch] - -------------------------------------------------------------------------------------
+[ECMWF-INFO -sbatch] -  This is the ECMWF jobfilter
+[ECMWF-INFO -sbatch] -  +++ Please report issues using the Support portal +++
+[ECMWF-INFO -sbatch] -  +++ https://support.ecmwf.int                     +++
+[ECMWF-INFO -sbatch] -  /usr/local/bin/ecsbatch: size: 53018, mtime: Wed Jul 23 12:12:48 2025
+[ECMWF-INFO -sbatch] - -------------------------------------------------------------------------------------
+[ECMWF-INFO -sbatch] - Time at submit: Tue Sep 16 18:19:00 2025 (1758046740.1515052) on ac6-100.bullx:/lus/h2resw01/hpcperm/ecme3497/github/ecearth-quests/ece4
+[ECMWF-INFO -sbatch] - --- SLURM VARIABLES ---
+[ECMWF-INFO -sbatch] - EC_CLUSTER=ac
+[ECMWF-INFO -sbatch] - SLURM_EXPORT_ENV=ALL
+[ECMWF-INFO -sbatch] - SBATCH_EXPORT=NONE
+[ECMWF-INFO -sbatch] - -----------------------
+[ECMWF-INFO -sbatch] - jobscript: /lus/h2resw01/hpcperm/ecme3497/github/ecearth-quests/ece4/ece4_update.sh
+[ECMWF-INFO -sbatch] - --- SCRIPT OPTIONS ---
+[ECMWF-INFO -sbatch] - -----------------------
+[ECMWF-INFO -sbatch] - --- POST-PROCESSED OPTIONS ---
+[ECMWF-INFO -sbatch] - ARG --positional=['ece4_update.sh']
+[ECMWF-INFO -sbatch] - ------------------------------
+[ECMWF-INFO -sbatch] - No qos requested, assuming qos=nf
+[ECMWF-INFO -sbatch] - jobtag: ecme3497-ece4_update.sh-1x2-/lus/h2resw01/hpcperm/ecme3497/github/ecearth-quests/ece4/slurm-_JOBID_.out
+[ECMWF-INFO -sbatch] - ['/usr/bin/sbatch', '--qos=nf', '--licenses=h2resw01', '--time=1-00:00:00', '/lus/h2resw01/hpcperm/ecme3497/github/ecearth-quests/ece4/ece4_update.sh']
+[ECMWF-INFO -sbatch] - sbatch executed on ac
+[ECMWF-INFO -sbatch] - Job queued on ac using method local
+[ECMWF-INFO -sbatch] - Submitted batch job 39583562
+[ECMWF-INFO -ecprofile] /usr/bin/bash NON_INTERACTIVE on ac6-124 at 20250916_181918.065, PID: 3433415, JOBID: 39583562
+[ECMWF-INFO -ecprofile] $SCRATCH=/ec/res4/scratch/ecme3497
+[ECMWF-INFO -ecprofile] $PERM=/perm/ecme3497
+[ECMWF-INFO -ecprofile] $HPCPERM=/ec/res4/hpcperm/ecme3497
+[ECMWF-INFO -ecprofile] $TMPDIR=/etc/ecmwf/ssd/ssd1/tmpdirs/ecme3497.39583562
+[ECMWF-INFO -ecprofile] $SCRATCHDIR=/ec/res4/scratchdir/ecme3497/2/39583562
+Already on 'main'
+M	sources/nemo-4.2
+M	sources/xios-3.0
+Your branch is up to date with 'origin/main'.
+Entering 'sources/nemo-4.2'
+Entering 'sources/oasis3-mct-5.2'
+Entering 'sources/oifs-48r1'
+From https://git.smhi.se/ec-earth/vendor/openifs/oifs48r1
+   a626989..3a2ae7c  main       -> origin/main
+Entering 'sources/oifs-48r1/external/atlas'
+From https://github.com/ecmwf/atlas
+ + 9afba285...0ab2498b ci              -> origin/ci  (forced update)
+   350b66c0..d60c10a6  develop         -> origin/develop
+   f0647fd4..b2ed4962  feature/CSP_iterate_targets -> origin/feature/CSP_iterate_targets
+ + 4e8f956e...fb0b6937 feature/Locator -> origin/feature/Locator  (forced update)
+ + 74c03774...e574abe3 feature/cuda-13 -> origin/feature/cuda-13  (forced update)
+ + 623ac868...14eb7214 pyWheel/fftw    -> origin/pyWheel/fftw  (forced update)
+Entering 'sources/oifs-48r1/external/ecbuild'
+From https://github.com/ecmwf/ecbuild
+   792858a..85b52da  develop    -> origin/develop
+Entering 'sources/oifs-48r1/external/eccodes'
+From https://github.com/ecmwf/eccodes
+ * [new branch]          bugfix/ECC-2137-SpectralSimple -> origin/bugfix/ECC-2137-SpectralSimple
+   3b070ee12..741bda69b  develop            -> origin/develop
+ * [new branch]          feature/ECC-2139-gloridt -> origin/feature/ECC-2139-gloridt
+ * [new branch]          feature/aifs-compo -> origin/feature/aifs-compo
+ * [new branch]          feature/ft2026-1   -> origin/feature/ft2026-1
+   af1da9385..c23f95f68  feature/modernisation_thread_safety -> origin/feature/modernisation_thread_safety
+Entering 'sources/oifs-48r1/external/eckit'
+From https://github.com/ecmwf/eckit
+   f210f7d4..5a7df5a5  develop    -> origin/develop
+Entering 'sources/oifs-48r1/external/fckit'
+Entering 'sources/oifs-48r1/external/fcm'
+Entering 'sources/oifs-48r1/external/fdb'
+From https://github.com/ecmwf/fdb
+   6a6fa254..88204ce3  FDB-535             -> origin/FDB-535
+ * [new branch]        FDB-535-envVariable -> origin/FDB-535-envVariable
+   f2466b52..93467b8d  develop             -> origin/develop
+   03bb1a0a..f1ddcc99  feature/fdb-hammer-consistency-checks -> origin/feature/fdb-hammer-consistency-checks
+   ea77e6a6..2edf9adc  feature/selectfdb-exclude -> origin/feature/selectfdb-exclude
+ + 82f44ef0...d95cef91 feature/zarr-fdb-interface -> origin/feature/zarr-fdb-interface  (forced update)
+ * [new branch]        feature/zarr-fdb-interface-fixed -> origin/feature/zarr-fdb-interface-fixed
+ + 70a07662...47537a08 feature/zarr/http-server -> origin/feature/zarr/http-server  (forced update)
+ * [new branch]        feature/zfi/add-doc-build -> origin/feature/zfi/add-doc-build
+ + 62669577...db0ffa1b feature/zfi/python-wheel -> origin/feature/zfi/python-wheel  (forced update)
+ * [new branch]        feature/zfi/streamline-api -> origin/feature/zfi/streamline-api
+   fd01511a..2ba5fdc4  master              -> origin/master
+   f7375672..0438e94b  remoteWipeIterator  -> origin/remoteWipeIterator
+ * [new tag]           5.17.5              -> 5.17.5
+Entering 'sources/oifs-48r1/external/metkit'
+From https://github.com/ecmwf/metkit
+   736ce0d..4f01121  develop            -> origin/develop
+ * [new branch]      feature/METK-141-matcher -> origin/feature/METK-141-matcher
+ + c1efcca...7df53bc feature/extend_dhs_prot_with_env -> origin/feature/extend_dhs_prot_with_env  (forced update)
+   88f9b78..0daa113  feature/mtg2_merge -> origin/feature/mtg2_merge
+   537873b..9e0f2bb  feature/preCY50r1  -> origin/feature/preCY50r1
+Entering 'sources/oifs-48r1/external/multio'
+From https://github.com/ecmwf/multio
+   64cdb1e8..93961441  develop               -> origin/develop
+   3ad586f8..19213e4c  feature/multiom-cpp-merge -> origin/feature/multiom-cpp-merge
+ * [new branch]        feature/multiom-cpp-migrate-allocate -> origin/feature/multiom-cpp-migrate-allocate
+   82b41ea3..d25f657c  feature/multiom-cpp-python -> origin/feature/multiom-cpp-python
+ + e94d6f62...8e76fb1e feature/seas6-develop -> origin/feature/seas6-develop  (forced update)
+ + 5d9abafa...93961441 mavm_CY49R1_for_49R2_v9_hackathon -> origin/mavm_CY49R1_for_49R2_v9_hackathon  (forced update)
+Entering 'sources/xios-3.0'
+Fetching origin
+From https://git.smhi.se/e9163/ec-earth-4-fork
+   1ad3bcb..759cd29  main       -> origin/main
+Fetching upstream
+From https://git.smhi.se/ec-earth/ecearth4
+   1ad3bcb..759cd29  main       -> upstream/main
+Fetching paolo
+From https://git.smhi.se/oloapinivad/ecearth4
+ + 59d4423...21967e0 changes-update -> paolo/changes-update  (forced update)
+merge: upstream - not something we can merge
+[ECMWF-INFO -ecepilog] ----------------------------------------------------------------------------------------------------
+[ECMWF-INFO -ecepilog] This is the ECMWF job Epilogue
+[ECMWF-INFO -ecepilog] +++ Please report issues using the Support portal +++
+[ECMWF-INFO -ecepilog] +++ https://support.ecmwf.int                     +++
+[ECMWF-INFO -ecepilog] ----------------------------------------------------------------------------------------------------
+[ECMWF-INFO -ecepilog] Run at 2025-09-16T18:21:26 on ac
+[ECMWF-INFO -ecepilog] JobName                   : ece4_update.sh
+[ECMWF-INFO -ecepilog] JobID                     : 39583562
+[ECMWF-INFO -ecepilog] Submit                    : 2025-09-16T18:19:00
+[ECMWF-INFO -ecepilog] Start                     : 2025-09-16T18:19:14
+[ECMWF-INFO -ecepilog] End                       : 2025-09-16T18:21:26
+[ECMWF-INFO -ecepilog] QueuedTime                : 14.0
+[ECMWF-INFO -ecepilog] ElapsedRaw                : 132
+[ECMWF-INFO -ecepilog] ExitCode                  : 0:0
+[ECMWF-INFO -ecepilog] DerivedExitCode           : 0:0
+[ECMWF-INFO -ecepilog] State                     : COMPLETED
+[ECMWF-INFO -ecepilog] Account                   : spitsozz
+[ECMWF-INFO -ecepilog] QOS                       : nf
+[ECMWF-INFO -ecepilog] User                      : ecme3497
+[ECMWF-INFO -ecepilog] StdOut                    : /lus/h2resw01/hpcperm/ecme3497/github/ecearth-quests/ece4/slurm-39583562.out
+[ECMWF-INFO -ecepilog] StdErr                    : /lus/h2resw01/hpcperm/ecme3497/github/ecearth-quests/ece4/slurm-39583562.out
+[ECMWF-INFO -ecepilog] NNodes                    : 1
+[ECMWF-INFO -ecepilog] NCPUS                     : 2
+[ECMWF-INFO -ecepilog] SBU                       : 0.626
+[ECMWF-INFO -ecepilog] jobtag                    : ecme3497-ece4_update.sh-1x2-/lus/h2resw01/hpcperm/ecme3497/github/ecearth-quests/ece4/slurm-_JOBID_.out
+[ECMWF-INFO -ecepilog] ----------------------------------------------------------------------------------------------------
+
