@@ -207,51 +207,52 @@ class EoceneOIFS():
         """
 
         # dictionary for values for each variable to modify
-        match_dict = {
-            "al": 0.15,
-            "aluvp": 0.06,
-            "aluvd": 0.06,
-            "alnip": 0.06,
-            "alnid": 0.06,
-            "lai_lv": 0.,
-            "lai_hv": 0.,
-        }
+        #match_dict = {
+        #    "al": 0.15,
+        #    "aluvp": 0.06,
+        #    "aluvd": 0.06,
+        #    "alnip": 0.06,
+        #    "alnid": 0.06,
+        #    "lai_lv": 0.,
+        #    "lai_hv": 0.,
+        #}
 
         inputfile= os.path.join(self.idir_climate, 'ICMCLECE4')
         outputfile = os.path.join(self.odir_climate, 'ICMCLECE4')   
         
+
         # split variables to operate on them individually
-        cdo.splitname(
-            input=inputfile, 
-            output=os.path.join(self.odir_climate,'ICMCLECE4_temp_'), 
-            options=GRIB2)
+        #cdo.splitname(
+        #    input=inputfile, 
+        #    output=os.path.join(self.odir_climate,'ICMCLECE4_temp_'), 
+        #    options=GRIB2)
 
         # use modify grib to set them to the new value
-        for var, new_value in match_dict.items():
-            modify_single_grib(
-                inputfile=os.path.join(self.odir_climate, f'ICMCLECE4_temp_{var}.grb'),
-                outputfile=os.path.join(self.odir_climate, f'ICMCLECE4_mod_{var}.grb'),
-                variables=[var],
-                spectral=False,
-                myfunction=modify_value,
-                newvalue=new_value
-            )
-            os.remove(os.path.join(self.odir_climate, f'ICMCLECE4_temp_{var}.grb'))
+        #for var, new_value in match_dict.items():
+        #    modify_single_grib(
+        #        inputfile=os.path.join(self.odir_climate, f'ICMCLECE4_temp_{var}.grb'),
+        #        outputfile=os.path.join(self.odir_climate, f'ICMCLECE4_mod_{var}.grb'),
+        #        variables=[var],
+        #        spectral=False,
+        #        myfunction=modify_value,
+        #        newvalue=new_value
+        #    )
+        #    os.remove(os.path.join(self.odir_climate, f'ICMCLECE4_temp_{var}.grb'))
 
         # merge them them together using the order of the filenames
-        variables = list(match_dict.keys())
-        paths = [os.path.join(self.odir_climate, f'ICMCLECE4_mod_{var}.grb') for var in variables]
-        if os.path.exists(os.path.join(self.odir_climate, 'ICMCLECE4_almost')):
-            os.remove(os.path.join(self.odir_climate, 'ICMCLECE4_almost'))
-        cdo.mergetime(options="-L", input=paths, 
-                    output=os.path.join(self.odir_climate, 'ICMCLECE4_almost'))
+        #variables = list(match_dict.keys())
+        #paths = [os.path.join(self.odir_climate, f'ICMCLECE4_mod_{var}.grb') for var in variables]
+        #if os.path.exists(os.path.join(self.odir_climate, 'ICMCLECE4_almost')):
+        #    os.remove(os.path.join(self.odir_climate, 'ICMCLECE4_almost'))
+        #cdo.mergetime(options="-L", input=paths, 
+        #            output=os.path.join(self.odir_climate, 'ICMCLECE4_almost'))
 
         # for some strange reason CDO mess up the time axis. Set it back an absolute time axis
         # to guarantee that files are read in the correct order
-        cdo.settaxis("9999-01-15,00:00:00,1month", input=os.path.join(self.odir_climate, 'ICMCLECE4_almost'),
-                    output=outputfile, options="-a")
-        for path in paths:
-            os.remove(path)
+        #cdo.settaxis("9999-01-15,00:00:00,1month", input=os.path.join(self.odir_climate, 'ICMCLECE4_almost'),
+        #            output=outputfile, options="-a")
+        #for path in paths:
+        #    os.remove(path)
 
     def create_sh(self, orog):
         """
@@ -266,7 +267,9 @@ class EoceneOIFS():
         
 
         input_spectral = os.path.join(self.idir_init, 'ICMSHECE4INIT')
-        output_spectral = os.path.join(self.odir_init, 'ICMSHECE4INIT') 
+        output_spectral = os.path.join(self.odir_init, 'ICMSHECE4INIT')
+        input_surface = os.path.join(self.idir_init, 'ICMGGECE4INIT')
+         
 
         # erase all orography
         modify_single_grib(
@@ -386,7 +389,7 @@ class EoceneOIFS():
             variables=['slt'],
             spectral=False,
             myfunction=modify_value,
-            newvalue=3 
+            newvalue=1 
         )
 
         # update the land sea mask
