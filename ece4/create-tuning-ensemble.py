@@ -19,7 +19,7 @@ from ruamel.yaml import YAML
 from ruamel.yaml.scalarstring import PlainScalarString
 from ruamel.yaml.comments import CommentedMap
 from yaml_util import load_yaml, save_yaml
-from yaml_util import noparse_block, notag_block, list_block
+from yaml_util import noparse_block, list_block
 
 yaml = YAML()
 yaml.preserve_quotes = True
@@ -28,14 +28,10 @@ yaml.preserve_quotes = True
 # Global variables
 
 components = ['oifs', 'nemo']
-namelists = ['namcumf', 'namcldp']
-parlist = dict()
-parlist['namcumf'] = ['RPRCON', 'ENTRORG', 'DETRPEN', 'ENTRDD', 'RMFDEPS']
-parlist['namcldp'] = ['RVICE', 'RLCRITSNOW', 'RSNOWLIN2', 'RCLDIFF', 'RCLDIFF_CONVI']
 
 ########################################################################
 
-def perturbate(parname, parvalue, expname1, expname2, config, clean=False):
+def perturbate(parname, parvalue, expname1, expname2, config, clean=False, skip_existing = False):
     """
     Duplicate an existing job to create a new one with a different experiment ID 
     and perturb a specified parameter.
@@ -58,7 +54,12 @@ def perturbate(parname, parvalue, expname1, expname2, config, clean=False):
             print(f"Cleaning up existing target directory {target_dir}.")
             shutil.rmtree(target_dir)
         else:
-            raise ValueError(f"Target experiment {expname2} already exists.")
+            if skip_existing:
+                print(f'Job already exists!')
+                print(f"Leaving {expname2} with a change of {parname} as is, going on...")
+                return
+            else:
+                raise ValueError(f"Target experiment {expname2} already exists.")
 
     # Copy the source directory to the target directory
     shutil.copytree(source_dir, target_dir)
@@ -114,6 +115,8 @@ def perturbate(parname, parvalue, expname1, expname2, config, clean=False):
 
     print(f"Duplicated job {expname1} to {expname2} with a change of {parname}.")
 
+    return
+
 
 if __name__ == "__main__":
 
@@ -121,13 +124,15 @@ if __name__ == "__main__":
     parser.add_argument("-e", "--expname", type=str, required=True, help="Reference experiment name (e.g., aa00).")
     parser.add_argument("-p", "--percent", type=float, default=20.0, help="Percentage to perturb the parameter (default: 20.0).")
     parser.add_argument("-c", "--config", type=str, default="config.yml", help="Path to the configuration file (default: config.yml).")
+    parser.add_argument("-t", "--tuning_params", type=str, default="tuning_params.yml", help="Path to the tuning file with all params to perturb (default: tuning_params.yml).")
     parser.add_argument("--clean", action="store_true", help="Clean up temporary files after duplication.")
+    parser.add_argument("--skip_existing", action="store_true", help="Leave existing exps where they are (if adding new params)")
 
     args = parser.parse_args()
     if len(args.expname) != 4:
         raise ValueError("Experiment names must be 4 characters long.")
 
-    params = load_yaml("tuning_params.yml")
+    params = load_yaml(args.tuning_params)
     config = load_yaml(args.config, expand_env=True)
 
     percent = args.percent
@@ -147,6 +152,6 @@ if __name__ == "__main__":
                 for perc in [-percent, percent]:
                     new_value = round(float(parvalue) * (1 + perc / 100.0), 10)
                     expname2 = args.expname[:2] + f"{icount:02d}"
-                    perturbate(parname, new_value, args.expname, expname2, config, clean=args.clean)
+                    perturbate(parname, new_value, args.expname, expname2, config, clean=args.clean, skip_existing=args.skip_existing)
                     icount += 1
 

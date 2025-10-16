@@ -15,6 +15,9 @@
                                 # of ice crystals to snow in large-scale precipitation
             RCLDIFF: 0.3E-05    # diffusion-coefficient for evaporation by turbulent mixing
             RCLDIFF_CONVI: 7.0  # enhancement factor of rcldiff for convection
+            RDEPLIQREFRATE: 0.5 # (50% deposition efficiency in top layer)
+            RDEPLIQREFDEPTH: 500.0 # m (recovery depth scale)
+            RCL_OVERLAPLIQICE: 0.65 # 
       nemo:
         tuning:
           namzdf:
