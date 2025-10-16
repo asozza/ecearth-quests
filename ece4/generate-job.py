@@ -175,6 +175,10 @@ def generate_job(kind, config, expname):
     context = exp_base[0]['base.context']
     context['experiment']['id'] = expname
 
+    # set the CMIP6 forcing as default
+    context['experiment']['forcing']['cmip']['version'] = 'CMIP6'
+    logging.warning("Using by default CMIP6 forcing data")
+
     # avoid case sensitivity
     kind = kind.upper()
 
