@@ -295,7 +295,7 @@ if __name__ == "__main__":
     parser.add_argument("-c","--config", type=str, help="YAML configuration file", default="config.yml")
     parser.add_argument("expname", type=str, help="Experiment name (e.g., aa00).")
     parser.add_argument("--clean", action="store_true", help="Clean up the experiment folder.")
-    parser.add_argument("-l", "--loglevel", type=str, default="info", help="Set the logging level (default: info).")
+    parser.add_argument("-l", "--loglevel", type=str, default="debug", help="Set the logging level (default: debug).")
 
     args = parser.parse_args()
     if args.kind.upper() not in ["AMIP", "CPLD", "OMIP"]:
