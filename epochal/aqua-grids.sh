@@ -1,6 +1,6 @@
 
 #!/bin/bash
-DIR=/lus/h2resw01/hpcperm/ccpd/AQUAGRID
+DIR=/ec/res4/hpcperm/itmn/AQUAGRID
 
 # cleanup
 module load cdo/2.4.0
@@ -54,14 +54,12 @@ done
 $cdo -expr,area=e1t*e2t /lus/h2resw01/hpcperm/ccpd/ECE4-DATA/nemo/domain/PALEORCA2/domain_cfg.nc $DIR/PALEORCA2/cellarea_PALEORCA2_T.nc
 
 
-exit
-
 #-----eORCA1-----#
-exp=
-user=jjvh
-mkdir -p $DIR/ORCA2
-$cdo gtc,0 -setname,mask -selname,sos -seltimestep,1 /lus/h2resw01/scratch/${user}/ece4/${exp}/output/nemo/${exp}_oce_1m_T_1990-1990.nc $DIR/eORCA1/eORCA1_mesh_sfc_grid_T.nc
-$cdo gtc,0 -setname,mask -seltimestep,1 -selname,thetao /lus/h2resw01/scratch/${user}/ece4/${exp}/output/nemo/${exp}_oce_1m_T_1990-1990.nc $DIR/eORCA1/eORCA1_mesh_3d_grid_T.nc
+exp=PR04
+user=smw
+mkdir -p $DIR/eORCA1
+$cdo gtc,0 -setname,mask -selname,sos -seltimestep,1 /perm/${user}/ece-4-exps/${exp}/output/nemo/${exp}_oce_1m_T_1990-1990.nc $DIR/eORCA1/eORCA1_mesh_sfc_grid_T.nc
+$cdo gtc,0 -setname,mask -seltimestep,1 -selname,thetao /perm/${user}/ece-4-exps/${exp}/output/nemo/${exp}_oce_1m_T_1990-1990.nc $DIR/eORCA1/eORCA1_mesh_3d_grid_T.nc
 for file in $DIR/eORCA1/eORCA1_mesh_sfc_grid_T.nc $DIR/eORCA1/eORCA1_mesh_3d_grid_T.nc ; do
   ncrename -d x_grid_T,x $file
   ncrename -d y_grid_T,y $file
