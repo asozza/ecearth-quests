@@ -3,13 +3,13 @@ import os
 import xarray as xr
 import numpy as np
 from cdo import Cdo
-from utils import modify_single_grib, truncate_grib_file, nullify_grib
-from utils import modify_value, replace_value, albedo
-from utils import extract_grid_info, spectral2gaussian
-from utils import eocene_mask
 import shutil
 import tempfile
+from utils import modify_single_grib, truncate_grib_file, nullify_grib
+from utils import modify_value, replace_value 
+from utils import extract_grid_info, spectral2gaussian
 from utils import GRIB2, NC4
+from albedo import albedo
 cdo = Cdo()
 
 class EoceneOIFS():
@@ -249,26 +249,7 @@ class EoceneOIFS():
         Set the albedo and the LAI to constant values.
         """
 
-        # dictionary for values for each variable to modify
-        #match_dict = {
-        #    "al": 0.15,
-        #    "aluvp": 0.06,
-        #    "aluvd": 0.06,
-        #    "alnip": 0.06,
-        #    "alnid": 0.06,
-        #    "lai_lv": 0.,
-        #    "lai_hv": 0.,
-        #}
-
-        inputfile= os.path.join(self.idir_climate, 'ICMCLECE4') 
-        outputfile=os.path.join(self.odir_climate, "ICMCLECE4") 
         variables = ['al', 'aluvp', 'aluvd', 'alnip', 'alnid', 'lai_lv', 'lai_hv']
-
-        #split variables to operate on them individually
-        #cdo.splitname(
-        #    input=inputfile, 
-        #    output=os.path.join(self.odir_climate,'ICMCLECE4_temp_'), 
-        #    options=GRIB2)
 
         modify_single_grib(
            inputfile=os.path.join(self.idir_climate, "ICMCLECE4"),
@@ -276,50 +257,9 @@ class EoceneOIFS():
            variables=variables,
            spectral=False,
            myfunction=albedo,
-           newfield=lsm_present  
+           lsm_present=lsm_present,
+           landsea=landsea  
            ) 
-        #os.remove(os.path.join(self.odir_climate, f'ICMCLECE4_temp_{variables}.grb'))
-        # Load the remapped Eocene land-sea mask
-        
-                
-        # Call modify_single_grib
-        modify_single_grib(
-            inputfile=outputfile,
-            outputfile=outputfile,
-            variables=variables,
-            spectral=False,
-            myfunction=eocene_mask,
-            landsea=landsea  
-        )
-
-        # merge them together using the order of the filenames
-        
-
-        #paths = [os.path.join(self.odir_climate, f'ICMCLECE4_mod_{var}.grb') for var in variables]
-        #if os.path.exists(os.path.join(self.odir_climate, 'ICMCLECE4_almost')):
-        #    os.remove(os.path.join(self.odir_climate, 'ICMCLECE4_almost'))
-        #cdo.mergetime(options="-L", input=paths, 
-        #            output=os.path.join(self.odir_climate, 'ICMCLECE4_almost'))
-
-        # for some strange reason CDO mess up the time axis. Set it back an absolute time axis
-        # to guarantee that files are read in the correct order
-        #cdo.settaxis("9999-01-15,00:00:00,1month", input=os.path.join(self.odir_climate, 'ICMCLECE4_almost'),
-        #            output=outputfile, options="-a")
-        #for path in paths:
-        #    os.remove(path)
-
-        # use modify grib to set them to the new value
-        #for var, new_value in match_dict.items():
-        #    modify_single_grib(
-        #        inputfile=os.path.join(self.odir_climate, f'ICMCLECE4_temp_{var}.grb'),
-        #        outputfile=os.path.join(self.odir_climate, f'ICMCLECE4_mod_{var}.grb'),
-        #        variables=[var],
-        #        spectral=False,
-        #        myfunction=modify_value,
-        #        newvalue=new_value
-        #    )
-        #    os.remove(os.path.join(self.odir_climate, f'ICMCLECE4_temp_{var}.grb'))
-
 
 
     def create_sh(self, orog):
