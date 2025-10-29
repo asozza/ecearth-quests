@@ -4,4 +4,7 @@
 *.egg-info/
 martini/nam_*
 ece4/config.yml
+ece4/config-eocene.yml
+ece4/config-epochal.yml
 ece4/log*
+ece4/*.out
