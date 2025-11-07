@@ -32,13 +32,13 @@ cdo sethalo,-1,-1 coords_ori.nc coords_halo.nc
 
 ### 1.2 Adding the bounds
 
-It is important to add cell bounds to this coordinate file so that we have a reference file for conservative interpolation. This can be achieved with the tool `orca_bounds_new.py` from AQUA available in the specific branch which can create the required cell bounds. The original tool is meant to work with the `mesh_mask.nc` file, but given that at this stage it is not available yet we modified slightly the code in order to make it work with simply a coordinate file. The adapted version is available at https://github.com/DestinE-Climate-DT/AQUA/blob/orca-coordinates.nc/cli/orca-grids/orca_bounds_new.py 
+It is important to add cell bounds to this coordinate file so that we have a reference file for conservative interpolation. This can be achieved with the tool `orca_bounds_new.py` from AQUA available in the specific branch which can create the required cell bounds. The original tool is meant to work with the `mesh_mask.nc` file, but given that at this stage it is not available yet we modified slightly the code in order to make it work with simply a coordinate file. The adapted version is available at in `ecearth-quests/epochal/NEMO/orca_bounds_new.py`
 
 ```bash
-./orca_bounds_new.py --stagg F --no-level coords_halo.nc coords_bounds.nc
+./orca_bounds_new.py --stagg T --no-level coords_halo.nc coords_bounds.nc
 ```
 
-The options for staggering is set to `F` mostly because `paleorca` is an F-grid according to IPSL team, and `--no-level` is set because there is no need to try to produce vertical coordinates (it will not work since there are no such info in the coordinate file).
+The options for staggering was initially set to `F`, but it is more correct to have it to `T`. And `--no-level` is set because there is no need to try to produce vertical coordinates (it will not work since there are no such info in the coordinate file).
 
 ### 1.3 Interpolate the bathymetry
 
@@ -71,6 +71,8 @@ cdo chname,topo,bathy_metry \
     -selname,topo,lon,lat herold_etal_eocene_topo_1x1.nc \
     PALEORCA_bathy_metry_fromHerold.nc
 ```
+
+>> A file named `PALEORCA_workflow.sh` is introduced and cover all this initial steps.
 
 ## 2. Running the DOMAINcfg
 
@@ -144,14 +146,14 @@ IF( cp_cfg == "paleorca" .AND. jp_cfg == 2 ) THEN    ! PALEORCA configuration
 > 🔎 Grid indices in `ncview` differ from Fortran by +2, so adjust accordingly. However, a lot of manual tuning is required. 
 
 
-#### 2.1.2 Modify the DOMAINcfg source code (deprecated)
+#### 2.1.2 Manually modify the bathymetry with python
 
 We wrote a simple tool which manually operates on the straits which provides larger problems, as Gibraltair, and on gulfs which might become closed seas as Baltic or Adriatic. This simply opens the obtained bathymetry, modifies a selected points with ARBITRARY values of depth and store it again. 
 
 The script `process_paleorca_bathymetry.py` and can be executed as 
 
 ```python
-./process_paleorca_bathymetry.py /path/to/paleorca/bathymetry
+python3 process_paleorca_bathymetry.py /path/to/paleorca/bathymetry
 ```
 
 ### 2.2 Compile the tool
