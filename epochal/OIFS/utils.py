@@ -5,6 +5,7 @@ import tempfile
 import shutil
 import numpy as np
 import xarray as xr
+import xesmf as xe
 import subprocess
 from cdo import Cdo
 cdo = Cdo()
@@ -261,3 +262,15 @@ def spectral2gaussian(spectral, kind):
         return int((int(spectral) + 1) / 2)
 
     raise ValueError("Unknown grid type")
+
+
+def regrid_dataset(data, regrid_to_reference):
+    """
+    Regrid a DataArray to match the grid of another DataArray.
+    """
+    regridder = xe.Regridder(
+        data, 
+        regrid_to_reference, 
+        method='bilinear'
+    )
+    return regridder(data)
