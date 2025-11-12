@@ -1,0 +1,42 @@
+# ECmean4 configuration file
+# More information on ECmen4 documentation https://ecmean4.readthedocs.io/en/latest/configuration.html 
+
+# Interface: no need to modify for EC-Earth
+interface: EC-Earth4
+
+# Choice of model name. It is printed in the output table
+model:
+  name: EC-Earth4
+
+# Directories where ECmean4 will look for data and where it will write the output
+dirs:
+  exp: /ec/res4/scratch/ccpd/ece4/
+  tab: /etc/ecmwf/nfs/dh1_perm_b/ccpd/ecmean/table
+  fig: /etc/ecmwf/nfs/dh1_perm_b/ccpd/ecmean/figures
+
+# global_mean diagnostics options
+global_mean:
+  variables:
+    atm: [tas, psl, pr, evspsbl, pme, clt, cll, clm, clh,
+              pr_oce, pme_oce, pr_land, pme_land,
+              net_toa, rsnt, rlnt, rsntcs, rlntcs, swcf, lwcf,
+              rsns, rlns, hfss, hfls, net_sfc_nosn, net_sfc,
+              toamsfc_nosn, toamsfc]
+    oce: [tos, sos, zos, wfo]
+    ice: [siconc]
+    tab: [rsnt, rlnt, net_toa, rsns, rlns, hfss, hfls, swcf, lwcf, net_sfc, toamsfc,
+          tas, clt, cll, clm, clh, pr, pme, psl]
+  regions: ['Global', 'North Midlat', 'Tropical', 'South Midlat']
+  seasons: ['ALL', 'DJF', 'JJA']
+  reference: EC23
+
+# performance_indices diagnostics options
+performance_indices:
+  variables:
+    atm2d: [net_sfc, tas, psl, pr, tauu, tauv]
+    atm3d: [ta, ua, va, hus]
+    oce: [tos, sos]
+    ice: [siconc]
+  regions: ['Global', 'North Midlat', 'Tropical', 'South Midlat']
+  seasons: ['ALL', 'DJF', 'JJA']
+  climatology: EC24

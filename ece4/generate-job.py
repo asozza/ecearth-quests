@@ -35,7 +35,7 @@ def configure_cores_taskset(exp_base, mode, resolution):
         logging.info(f"Using default 1 node configuration for {mode}")
         exp_base[1]['base.context']['job']['oifs']['omp_num_threads'] = 4 
         exp_base[1]['base.context']['job']['groups'] = [
-            {'nodes': 1, 'xios': 1, 'oifs': 31, 'amipfr': 1}
+            {'nodes': 1, 'xios': 3, 'oifs': 31, 'amipfr': 1}
         ]
     # default 2 node configuration for CPLD: use openMP with 16 threads and 13 tasks
     # NEMO 46 tasks from here https://github.com/asozza/ecearth-quests/blob/main/ece4/NEMO/best_domain_decomposition_ORCA2.txt
@@ -56,7 +56,7 @@ def configure_cores_taskset(exp_base, mode, resolution):
         logging.info(f"Using default 1 node configuration for {mode}")
         del exp_base[1]['base.context']['job']['oifs']
         exp_base[1]['base.context']['job']['groups'] = [
-            { 'nodes': 1, 'xios': 1, 'nemo': 122 }
+            { 'nodes': 1, 'xios': 3, 'nemo': 122 }
         ]
 
     return exp_base
@@ -174,6 +174,10 @@ def generate_job(kind, config, expname):
     exp_base = load_yaml(exp_base_file)
     context = exp_base[0]['base.context']
     context['experiment']['id'] = expname
+
+    # set the CMIP6 forcing as default
+    context['experiment']['forcing']['cmip']['version'] = 'CMIP6'
+    logging.warning("Using by default CMIP6 forcing data")
 
     # avoid case sensitivity
     kind = kind.upper()
