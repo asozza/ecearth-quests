@@ -5,11 +5,11 @@ import numpy as np
 import xesmf as xe
 import shutil
 import tempfile
-from utils import modify_single_grib, truncate_grib_file, nullify_grib
+from utils import modify_single_grib, nullify_grib
 from utils import modify_value, replace_value, regrid_dataset 
 from utils import extract_grid_info, spectral2gaussian
 from utils import GRIB2, NC4
-from albedo import albedo
+from eocene_functions import albedo, compute_slope, vegetation_zhang, aerosols
 from cdo import Cdo
 cdo = Cdo()
 
@@ -273,13 +273,10 @@ class EoceneOIFS():
             orog (xarray.DataArray): Orography data to be used for the ICMSH data.
             sd_orog (xarray.DataArray, optional): Standard deviation of orography.
         """
-        
 
         input_spectral = os.path.join(self.idir_init, 'ICMSHECE4INIT')
         output_spectral = os.path.join(self.odir_init, 'ICMSHECE4INIT')
-        input_surface = os.path.join(self.idir_init, 'ICMGGECE4INIT')
          
-
         # erase all orography
         modify_single_grib(
             inputfile=input_spectral,
@@ -308,102 +305,72 @@ class EoceneOIFS():
         #    outputfile=output_spectral,
         #)
 
-    def create_init(self, landsea, tvh, tvl, cvh, cvl, sd_orog):
+    def create_init(self, landsea, sd_orog):
         """
         Create the ICMGGECE4INIT data for the Eocene OIFS.
         Replace landsea mask
-        Set subgrid orography to 0, soild type to 3, and vegetation to 0.
+        Modify subgrid orography and vegetation fields, set soil type to 1.
 
         Args:
             landsea (xarray.DataArray): Land-sea mask data to be used for the ICMGE data.
-            tvh (xarray.DataArray): Vegetation type data for high vegetation.
-            tvl (xarray.DataArray): Vegetation type data for low vegetation.
-            cvh (xarray.DataArray): Vegetation cover data for high vegetation.
-            cvl (xarray.DataArray): Vegetation cover data for low vegetation.
             sd_orog (xarray.DataArray): Standard deviation of subgrid-scale orography.
         """
 
         input_surface = os.path.join(self.idir_init, 'ICMGGECE4INIT')
         output_surface = os.path.join(self.odir_init, 'ICMGGECE4INIT')
 
-         # Start by copying the base surface file
+         # Copying the base surface file
         shutil.copy(input_surface, output_surface)
 
-
-        # Inject sd_orography (sdfor)
+        # Insert sd_orography (sdor)
         modify_single_grib(
-            inputfile=output_surface,
+            inputfile=input_surface,
             outputfile=output_surface,
-            variables=['sdfor'],
+            variables=['sdor'],
             spectral=False,
             myfunction=replace_value,
             newfield=sd_orog
         )
-        # Zero out other subgrid orographic fields
+
+        # Insert slope (slor) computed from sd
         modify_single_grib(
             inputfile=input_surface,
-            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
-            variables=['anor', 'isor', 'slor', 'cl', 'chnk'],
+            outputfile=output_surface,
+            variables=['slor'],
             spectral=False,
-            myfunction=modify_value,
-            newvalue=0.  
+            myfunction=compute_slope,
+            sd_eoc=sd_orog
         )
 
+        # Set anisotropy and soil type to 1
+        modify_single_grib(
+            inputfile=input_surface,
+            outputfile=output_surface,
+            variables=['isor', 'slt'],
+            spectral=False,
+            myfunction=modify_value,
+            newvalue=1.  
+        )
+
+        # Zero out other subgrid orographic fields
         nullify_grib(
-            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
-            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
-            variables=['sd']
+            inputfile=input_surface,
+            outputfile=output_surface,
+            variables=['sd', 'sdfor', 'anor', 'cl', 'chnk']
         )
 
+        # Modify vegetation variables
         modify_single_grib(
-            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
-            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
-            variables=['tvh'],
+            inputfile=input_surface,
+            outputfile=output_surface,
+            variables=['tvh', 'tvl', 'cvh', 'cvll'],
             spectral=False,
-            myfunction=replace_value,
-            newfield=tvh
-        )
-
-        modify_single_grib(
-            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
-            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
-            variables=['tvl'],
-            spectral=False,
-            myfunction=replace_value,
-            newfield=tvl
-        )
-
-        modify_single_grib(
-            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
-            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
-            variables=['cvh'],
-            spectral=False,
-            myfunction=replace_value,
-            newfield=tvh
-        )
-
-        modify_single_grib(
-            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
-            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
-            variables=['cvl'],
-            spectral=False,
-            myfunction=replace_value,
-            newfield=tvl
-        )
-
-        #erase all subgrid orography
-        modify_single_grib(
-            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
-            outputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
-            variables=['slt'],
-            spectral=False,
-            myfunction=modify_value,
-            newvalue=1 
+            myfunction=vegetation_zhang,
         )
 
         # update the land sea mask
         modify_single_grib(
-            inputfile=os.path.join(self.odir_init, 'ICMGGECE4INIT'),
+            inputfile=input_surface,
             outputfile=output_surface,
             variables=['lsm'],
             spectral=False,
@@ -430,256 +397,11 @@ class EoceneOIFS():
         )
 
     
-    def prepare_vegetation(self):
-        """"
-        Create the ICMGG vegetation data for the Eocene OIFS.
-        Replace the vegetation data with the one from the Herold data.
-        Set the vegetation type to 0 for all types.
-        Perform a mapping from present-day initial conditions
-        """
 
 
-        herold_file = os.path.join(self.herold, "herold_etal_eocene_biome_1x1.nc")
-        herold_remap = cdo.remapnn(
-            f"N{self.gaussian}", 
-            input=herold_file, 
-            output=os.path.join(self.herold, "herold_etal_eocene_biome_1x1_N32.nc")
-        )
-            
-        icmgg_file = os.path.join(self.idir_init, "ICMGGECE4INIT")
-        if os.path.exists(os.path.join(self.herold, "ICMGG.nc")):
-            os.remove(os.path.join(self.herold, "ICMGG.nc"))
-        icmgg_remap = cdo.setgridtype(
-            "regularnn", 
-            input=icmgg_file, 
-            output=os.path.join(self.herold ,"ICMGG.nc"),
-            options=NC4
-        )
-
-        herold = xr.open_dataset(herold_remap)
-        icmgg = xr.open_dataset(icmgg_remap)
-
-        biome_dict = {'tvh': {}, 'tvl': {}}
-        for vegtype in ["tvh", "tvl"]:
-            for i in range(1, 11):
-                vegid = icmgg[vegtype].where(herold["prei_biome_hp"] == i).values
-                vegid = vegid[~np.isnan(vegid)]
-                unique, counts = np.unique(vegid, return_counts=True)
-                if unique.size>0:
-                    biome_dict[vegtype][i] = int(unique[np.argmax(counts)])
-                else:
-                    biome_dict[vegtype][i] = None
-
-        eocene_icmgg = icmgg[['tvh', 'tvl', 'cvh', 'cvl']]
-        for vegtype in ["tvh", "tvl"]:
-            eocene_icmgg[vegtype] = eocene_icmgg[vegtype]*0
-            for i in range(1, 11):
-                eocene_icmgg[vegtype] = xr.where(
-                    herold['eocene_biome_hp'] == i,
-                    biome_dict[vegtype][i],
-                    eocene_icmgg[vegtype])
-        
-        for vegtype in ["cvh", "cvl"]:
-            eocene_icmgg[vegtype] = eocene_icmgg[vegtype]*0
-
-        if os.path.exists(os.path.join(self.odir_init, "ICMGG_vegetation.nc")):
-            os.remove(os.path.join(self.odir_init, "ICMGG_vegetation.nc"))
-        eocene_icmgg.to_netcdf(
-            os.path.join(self.odir_init, "ICMGG_vegetation.nc")
-        )
-
-        return os.path.join(self.odir_init, "ICMGG_vegetation.nc")
 
 
-    def prepare_vegetation_zhang(self):
-        """"
-        Alternative method to create the ICMGG vegetation data for the Eocene OIFS.
-        Replace the vegetation data with the one from the Herold data.
-        Set the vegetation content to 1 for the dominant vegetation type and 0 to the others.
-        Perform a mapping using the Zhang et al., 2021 criteria. 
-        """
-
-
-        herold_file = os.path.join(self.herold, "herold_etal_eocene_biome_1x1.nc")
-        herold_remap = cdo.remapnn(
-            f"N{self.gaussian}", 
-            input=herold_file, 
-            output=os.path.join(self.herold, "herold_etal_eocene_biome_1x1_N32.nc")
-        )
-
-        herold = xr.open_dataset(herold_remap)
-
-        # === Biome to vegetation ID mappings ===
-        biome_to_tvh = {
-            1: 1, # Tropical forest → Evergreen broadleaf trees
-            2: 2, # Warm-temperate forest → Evergreen needleleaf trees
-            6: 3, # Temperate forest → Deciduous broadleaf
-            7: 4, # Boreal forest → Deciduous needleleaf
-        }
-
-        biome_to_tvl = {
-            3: 5, # Savanna → Tall grass
-            4: 6, # Grassland → Short grass
-            5: 7, # Desert → Semidesert
-            8: 8, # Tundra → Tundra
-            9: 8, # Dry Tundra → Tundra
-        }
-
-        # === Create blank data arrays ===
-        shape = herold['eocene_biome_hp'].shape
-        coords = herold.coords
-
-        tvh = xr.full_like(herold['eocene_biome_hp'], fill_value=0)
-        tvl = xr.full_like(herold['eocene_biome_hp'], fill_value=0)
-        cvh = xr.zeros_like(tvh)
-        cvl = xr.zeros_like(tvl)
-
-        for biome_id in range(1, 10): # assuming biome IDs go from 1 to 9
-            mask = herold['eocene_biome_hp'] == biome_id
-
-            if biome_id in biome_to_tvh:
-                tvh = xr.where(mask, biome_to_tvh[biome_id], tvh)
-                cvh = xr.where(mask, 1.0, cvh)
-            elif biome_id in biome_to_tvl:
-                tvl = xr.where(mask, biome_to_tvl[biome_id], tvl)
-                cvl = xr.where(mask, 1.0, cvl)
-            else:
-                print(f"Warning: biome {biome_id} not in mapping.")
-
-        # === Assemble final dataset ===
-        vegetation_ds = xr.Dataset(
-        {
-            "tvh": tvh,
-            "tvl": tvl,
-            "cvh": cvh,
-            "cvl": cvl
-        },
-
-        )
-
-        # === Save ===
-        output_path = os.path.join(self.odir_init, "ICMGG_vegetation.nc")
-        if os.path.exists(output_path):
-            os.remove(output_path)
-        vegetation_ds.to_netcdf(output_path)
-
-        return output_path
     
-    def prepare_aerosols(self):
-        """
-        Convert Herold Eocene aerosol data (kg/kg) to column-integrated mass (kg/m²)
-        on the IFS grid, using the US Standard Atmosphere for density interpolation.
-        """
-
-        print("→ Loading Herold aerosol data")
-        paleoaerfile = os.path.join(self.herold, "herold_etal_eocene_CAM4_BAM_aerosols.nc")
-        aer_paleo = xr.open_dataset(paleoaerfile)
-
-        # Load IFS reference aerosol climatology
-        aerfile_ifs_pd = os.path.join(self.idir, 'oifs', 'ifsdata/aerosol_cams_climatology_43R3a.nc')
-        aer_ifs_pd = xr.open_dataset(aerfile_ifs_pd)
-        aer_ifs_paleo = aer_ifs_pd.copy()
-
-        # Re-bin the Herold aerosol bins
-        aer_paleo_newbin = aer_paleo.copy()
-        aer_paleo_newbin['DST01'] = aer_paleo['DST01']*0.57
-        aer_paleo_newbin['DST02'] = aer_paleo['DST01']*0.39
-        aer_paleo_newbin['DST03'] = aer_paleo['DST02'] + aer_paleo['DST03'] + aer_paleo['DST04']
-        aer_paleo_newbin['SSLT01'] = aer_paleo['SSLT01']*0.57
-        aer_paleo_newbin['SSLT02'] = aer_paleo['SSLT01']*0.39 + aer_paleo['SSLT02'] + aer_paleo['SSLT03']
-        aer_paleo_newbin['SSLT03'] = aer_paleo['SSLT04']
-
-        # Check or generate US Standard Atmosphere
-        ua_file = os.path.join(self.herold, "us_standard_atmosphere_newlevs.nc")
-        if not os.path.exists(ua_file):
-            print("→ Generating US Standard Atmosphere data")
-            # US Standard Atmosphere data (alt, temp, g, pressure, density, mu)
-            data = """
-            -1000   21.50   9.810   11.39   1.347   1.821
-            0       15.00   9.807   10.13   1.225   1.789
-            1000    8.50    9.804   8.988   1.112   1.758
-            2000    2.00    9.801   7.950   1.007   1.726
-            3000    -4.49   9.797   7.012   0.9093  1.694
-            4000    -10.98  9.794   6.166   0.8194  1.661
-            5000    -17.47  9.791   5.405   0.7364  1.628
-            6000    -23.96  9.788   4.722   0.6601  1.595
-            7000    -30.45  9.785   4.111   0.5900  1.561
-            8000    -36.94  9.782   3.565   0.5258  1.527
-            9000    -43.42  9.779   3.080   0.4671  1.493
-            10000   -49.90  9.776   2.650   0.4135  1.458
-            15000   -56.50  9.761   1.211   0.1948  1.422
-            20000   -56.50  9.745   0.5529  0.08891 1.422
-            25000   -51.60  9.730   0.2549  0.04008 1.448
-            30000   -46.64  9.715   0.1197  0.01841 1.475
-            40000   -22.80  9.684   0.0287  0.003996 1.601
-            50000   -2.5    9.654   0.007978 0.001027 1.704
-            60000   -26.13  9.624   0.002196 0.0003097 1.584
-            70000   -53.57  9.594   0.00052  0.00008283 1.438
-            80000   -74.51  9.564   0.00011  0.00001846 1.321
-            """
-            lines = data.strip().split('\n')
-            parsed_data = [list(map(float, line.split())) for line in lines]
-            arr = np.array(parsed_data)
-            altitude = arr[:,0]
-            temperature = 273.15 + arr[:,1]
-            g = arr[:,2]
-            pressure = 1e2*arr[:,3]
-            density = arr[:,4]
-            mu = arr[:,5]
-
-            ds = xr.Dataset(
-                {
-                    'temperature': (['altitude'], temperature),
-                    'gravity': (['altitude'], g),
-                    'pressure': (['altitude'], pressure),
-                    'density': (['altitude'], density),
-                    'viscosity': (['altitude'], mu)
-                },
-                coords={'altitude': (['altitude'], altitude)}
-            )
-
-            # log-pressure coordinate & interpolate to Herold levels
-            log_pressure = np.log(ds.pressure)
-            ds = ds.assign_coords(log_pressure=log_pressure)
-            ds_new = ds.swap_dims({'altitude':'log_pressure'})
-            new_log_pressure = np.log(aer_paleo.lev)
-            ds_interp = ds_new.interp(log_pressure=new_log_pressure, method='linear')
-            ds_interp.to_netcdf(ua_file)
-            print(f"→ US Standard Atmosphere saved at {ua_file}")
-        else:
-            ds_interp = xr.open_dataset(ua_file)
-
-        # Map Herold -> IFS variable names
-        var_dict = {
-            'Sulfates': "SO4",
-            'Black_Carbon_hydrophilic': "CB1",
-            'Black_Carbon_hydrophobic': "CB2",
-            'Mineral_Dust_bin1': "DST01",
-            'Mineral_Dust_bin2': "DST02",
-            'Mineral_Dust_bin3': "DST03",
-            'Organic_Matter_hydrophilic': "OC1",
-            'Organic_Matter_hydrophobic': "OC2",
-            'Sea_Salt_bin1': "SSLT01",
-            'Sea_Salt_bin2': "SSLT02",
-            'Sea_Salt_bin3': "SSLT03"
-        }
-
-        # Convert to column mass and regrid
-        for varname2 in var_dict:
-            varname1 = var_dict[varname2]
-            print(f"→ Processing {varname1} -> {varname2}")
-            new_var = aer_paleo_newbin[varname1] * ds_interp.density
-            new_var_rg = regrid_dataset(new_var, regrid_to_reference=aer_ifs_paleo[varname2])
-            new_var_rg_int = -new_var_rg.integrate(coord='altitude')
-            aer_ifs_paleo[varname2].data = new_var_rg_int.data.astype('float32')
-
-        # Save Eocene aerosol climatology
-        output_path = os.path.join(self.odir_init, "aerosol_cams_climatology_43R3a_EOCENO.nc")
-        if os.path.exists(output_path):
-            os.remove(output_path)
-        aer_ifs_paleo.to_netcdf(output_path)
-        print(f"→ Eocene aerosol data saved at {output_path}")
-        return output_path
 
 
 
