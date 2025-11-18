@@ -287,17 +287,6 @@ class EoceneOIFS():
             newfield=orog*9.81 #converted to geopotential
         )
 
-        ## ⬅️ Add sd_orography if provided
-        #if sd_orog is not None:
-        #    modify_single_grib(
-        #        inputfile=output_spectral,
-        #        outputfile=output_spectral,
-        #        variables='sdor',
-        #        spectral=False,  # likely gridpoint
-        #        myfunction=replace_value,
-        #        newfield=sd_orog
-        #    )
-
         # truncate spectral variables to first harmonic (mean value)
         #truncate_grib_file(
         #    inputfile=output_spectral,
@@ -363,9 +352,11 @@ class EoceneOIFS():
         modify_single_grib(
             inputfile=input_surface,
             outputfile=output_surface,
-            variables=['tvh', 'tvl', 'cvh', 'cvll'],
+            variables=['tvh', 'tvl', 'cvh', 'cvl'],
             spectral=False,
             myfunction=vegetation_zhang,
+            herold_path=self.herold,
+            gaussian=self.gaussian
         )
 
         # update the land sea mask

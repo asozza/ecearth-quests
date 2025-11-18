@@ -20,7 +20,7 @@ import tempfile
 from cdo import Cdo
 cdo = Cdo()
 
-def vegetation_zhang(self, field):
+def vegetation_zhang(field, herold_path, gaussian, var=None, **kwargs):
         """"
         Alternative method to create the ICMGG vegetation data for the Eocene OIFS.
         Replace the vegetation data with the one from the Herold data.
@@ -29,11 +29,11 @@ def vegetation_zhang(self, field):
         """
 
 
-        herold_file = os.path.join(self.herold, "herold_etal_eocene_biome_1x1.nc")
+        herold_file = os.path.join(herold_path, "herold_etal_eocene_biome_1x1.nc")
         herold_remap = cdo.remapnn(
-            f"N{self.gaussian}", 
+            f"N{gaussian}", 
             input=herold_file, 
-            output=os.path.join(self.herold, "herold_etal_eocene_biome_1x1_N32.nc")
+            output=os.path.join(herold_path, "herold_etal_eocene_biome_1x1_N32.nc")
         )
 
         herold = xr.open_dataset(herold_remap)
@@ -171,7 +171,7 @@ def albedo(field: xr.Dataset, var=None, lsm_present=None, landsea=None, **kwargs
     print("Combined modification complete, GRIB structure preserved.")
     return field
 
-def compute_slope (grib_field, sd_eoc, a=4.376786e-05, b=2.476405e-04):
+def compute_slope (field, var=None, sd_eoc=None, a=4.376786e-05, b=2.476405e-04):
     """
     Replace a GRIB field (slor) using the linear transfer function:
         slope = a * sd + b
