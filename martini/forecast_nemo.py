@@ -948,11 +948,12 @@ def replacer(expname, leg):
     browser = ['restart.nc', 'restart_ice.nc']
     for file in browser:
         rebfile = os.path.join(dirs['tmp'], str(leg).zfill(3), file)
-        resfile = os.path.join(dirs['restart'], str(leg).zfill(3), file)
+        resfile = os.path.join(dirs['exp'], file)
         shutil.copy(rebfile, resfile)
-        newfile = os.path.join(dirs['exp'], file)
-        print("Linking rebuilt NEMO restart", file)            
-        os.symlink(resfile, newfile)
+        print("Copying new NEMO restarts", file)
+        #newfile = os.path.join(dirs['exp'], file)
+        #print("Linking rebuilt NEMO restart", file)            
+        #os.symlink(resfile, newfile)
     
     return None
 
