@@ -49,30 +49,19 @@ varlists = {
     'vo': ['vn', 'vb']
 }
 
+# define minimal catalogue
 catalogue = {
     'thetao' : {'dim': '3D', 'grid': 'T', 'units': 'degC', 'long_name': 'Temperature'},
     'so': {'dim': '3D', 'grid': 'T', 'units': 'PSU', 'long_name': 'Salinity'}
 }
 
-def load_config():
-    """ Load configuration file """
+# define global paths
+base_path = "/ec/res4/scratch/itas/ece4"
+src_path = "/ec/res4/hpcperm/itas/src/gitlab/ecearth4-v4.1.3/sources/nemo-4.2/tools/REBUILD_NEMO"
+data_path = "/lus/h2resw01/hpcperm/ccpd/ECE4-DATA"
 
-    config_path = "../../config.yaml"
-    if os.path.exists(config_path):
-        with open(config_path, "r") as f:
-            return yaml.safe_load(f)
-
-    return {}
-    
 def folders(expname):
     """ List of global paths dependent on expname """
-    
-    system = platform.system().lower()
-    config = load_config()
-    config = config.get(system)    
-    base_path = config.get("base_path")
-    src_path = config.get("src_path")
-    data_path = config.get("data_path")
 
     dirs = {
         'exp': os.path.join(base_path, expname),
@@ -82,7 +71,6 @@ def folders(expname):
         'log': os.path.join(base_path, expname, "log"),
         'tmp': os.path.join(base_path, expname, "tmp"),
         'post': os.path.join(base_path, expname, "post"),
-        'rebuild': os.path.join(src_path, "rebuild_nemo"),
         'domain': os.path.join(data_path, "nemo", "domain")
     }
 
@@ -119,13 +107,10 @@ def get_decimal_year(date):
 
     return [get_year_fraction(d) for d in date]
 
-def _forecast_xarray(year, use_cftime=True):
+def _forecast_xarray(year):
     """Get the xarray for the forecast time"""
 
     fdate = cftime.DatetimeGregorian(year, 1, 1, 0, 0, 0, has_year_zero=False)
-
-    if use_cftime == False:
-        fdate = get_decimal_year([fdate])[0]
     
     xf = xr.DataArray(data = np.array([fdate]), dims = ['time'], coords = {'time': np.array([fdate])},
                       attrs = {'stardand_name': 'time', 'long_name': 'Time axis', 'bounds': 'time_counter_bnds', 'axis': 'T'})
@@ -318,7 +303,8 @@ def reader_nemo(expname, startyear, endyear, grid="T", freq="1m"):
         raise FileNotFoundError("No data files found within the specified range.")
 
     #logging.info('Files to be loaded %s', filelist)
-    data = xr.open_mfdataset(filelist, preprocess=lambda d: dict[grid]["preproc"](d, grid), use_cftime=True, chunks={'time_counter': 12})
+    time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
+    data = xr.open_mfdataset(filelist, preprocess=lambda d: dict[grid]["preproc"](d, grid), decode_times=time_coder, data_vars="all")
 
     return data
 
@@ -373,7 +359,7 @@ def rebuilder(expname, leg):
     
     os.makedirs(os.path.join(dirs['tmp'], str(leg).zfill(3)), exist_ok=True)
 
-    rebuild_exe = os.path.join(dirs['rebuild'], "rebuild_nemo")
+    rebuild_exe = os.path.join(src_path, "rebuild_nemo")
   
     for kind in ['restart', 'restart_ice']:
         print(' Processing ' + kind)
@@ -424,7 +410,8 @@ def reader_rebuilt(expname, startleg, endleg):
         matching_files = glob.glob(pattern)
         filelist.extend(matching_files)
     logging.info(' File to be loaded %s', filelist)
-    data = xr.open_mfdataset(filelist, use_cftime=True, engine="netcdf4")
+    time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
+    data = xr.open_mfdataset(filelist, engine="netcdf4", decode_times=time_coder, data_vars="all")
 
     return data
 
@@ -670,7 +657,7 @@ def process_data(data, ftype, dim='3D', grid='T'):
     return data
 
 
-def project_eofs(expname, varname, endyear, window, neofs, yearleap, mode='full', use_cftime=True, debug=False):
+def project_eofs(expname, varname, endyear, window, neofs, yearleap, mode='full'):
     """ 
     Function to project a field in the future using EOFs and linear regression. 
     
@@ -696,7 +683,7 @@ def project_eofs(expname, varname, endyear, window, neofs, yearleap, mode='full'
     info = catalogue[varname]
 
     # forecast target year
-    xf = _forecast_xarray(targetyear, use_cftime)
+    xf = _forecast_xarray(targetyear)
 
     # prepare patterns for EOFs
     filename = os.path.join(dirs['tmp'], f"{varname}_pattern.nc")
@@ -713,20 +700,10 @@ def project_eofs(expname, varname, endyear, window, neofs, yearleap, mode='full'
         for i in range(neofs):
             filename = os.path.join(dirs['tmp'], f"{varname}_series_{str(i).zfill(5)}.nc")
             logging.info(f"Reading filename: {filename}")
-            timeseries = xr.open_mfdataset(filename, use_cftime=True, preprocess=lambda data: process_data(data, ftype='series', dim=info['dim'], grid=info['grid']))        
-            if not use_cftime:
-                new_time = get_decimal_year(timeseries['time'].values)
-                timeseries['time'] = new_time
+            time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
+            timeseries = xr.open_mfdataset(filename, decode_times=time_coder, preprocess=lambda data: process_data(data, ftype='series', dim=info['dim'], grid=info['grid']))
             coeffs = timeseries.polyfit(dim='time', deg=1, skipna=True)
             theta = xr.polyval(xf, coeffs[f"{varname}_polyfit_coefficients"])
-
-            if debug == True:
-                logging.info(f"Debug mode: ON --> Plotting fit EOF timeseries n={i}")
-                figname=os.path.join(dirs['tmp'], f"{varname}_fit_{str(i).zfill(5)}.png")
-                logging.info(f"Creating figure: {figname}")
-                debug_fitplot(timeseries, coeffs, varname, figname=figname)
-                print(f"theta={theta.values}")
-
             basis = pattern.isel(time=i)
             field += theta * basis
         
@@ -744,21 +721,11 @@ def project_eofs(expname, varname, endyear, window, neofs, yearleap, mode='full'
     # First EOF
     elif mode == 'first':
         
-        filename = os.path.join(dirs['tmp'], f"{varname}_series_00000.nc")    
-        timeseries = xr.open_mfdataset(filename, use_cftime=True, preprocess=lambda data: process_data(data, ftype='series', dim=info['dim'], grid=info['grid']))        
-        if not use_cftime:
-            new_time = get_decimal_year(timeseries['time'].values)
-            timeseries['time'] = new_time
+        filename = os.path.join(dirs['tmp'], f"{varname}_series_00000.nc")
+        time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
+        timeseries = xr.open_mfdataset(filename, decode_times=time_coder, preprocess=lambda data: process_data(data, ftype='series', dim=info['dim'], grid=info['grid']))
         coeffs = timeseries.polyfit(dim='time', deg=1, skipna = True)
-        theta = xr.polyval(xf, coeffs[f"{varname}_polyfit_coefficients"])
-        
-        if debug == True:
-            logging.info(f"Debug mode: ON --> Plotting fit 1st EOF timeseries")
-            figname=os.path.join(dirs['tmp'], f"{varname}_fit_00000.png")
-            logging.info(f"Creating figure: {figname}")        
-            debug_fitplot(timeseries, coeffs, varname, figname=figname)
-            print(f"theta={theta.values}")
-        
+        theta = xr.polyval(xf, coeffs[f"{varname}_polyfit_coefficients"])        
         basis = pattern.isel(time=0)
         field += theta * basis
         field['time'] = xf
@@ -777,23 +744,13 @@ def project_eofs(expname, varname, endyear, window, neofs, yearleap, mode='full'
 
         for i in range(neofs):            
             filename = os.path.join(dirs['tmp'], f"{varname}_series_{str(i).zfill(5)}.nc")
-            timeseries = xr.open_mfdataset(filename, use_cftime=True, preprocess=lambda data: process_data(data, ftype='series', dim=info['dim'], grid=info['grid']))
+            time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
+            timeseries = xr.open_mfdataset(filename, decode_times=time_coder, preprocess=lambda data: process_data(data, ftype='series', dim=info['dim'], grid=info['grid']))
             theta = timeseries[varname].isel(time=-1)
             basis = pattern.isel(time=i)
             field += theta * basis
         
         field = field.drop_vars({'time'})
-
-        if debug == True:
-            logging.info(f"Debug mode: ON --> Plotting reconstructed field")
-            #rdata = reader_rebuilt(expname, endleg, endleg)
-            filename = os.path.join(dirs['tmp'], f"{varname}_anomaly.nc")
-            time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
-            data = xr.open_dataset(filename, decode_times=time_coder)            
-            #data = xr.open_mfdataset(filename, use_cftime=True) #, preprocess=lambda data: process_data(data, ftype='pattern', dim=info['dim'], grid=info['grid']))
-            figname=os.path.join(dirs['tmp'], f"{varname}_reco.png")
-            logging.info(f"Creating figure: {figname}")
-            debug_recoplot(field, data, varname, figname)
 
         # add mean (TO BE CHANGED!!!!!!!!!)
         logging.info(f"Adding mean trend of {varname}.nc")
@@ -807,23 +764,13 @@ def project_eofs(expname, varname, endyear, window, neofs, yearleap, mode='full'
     elif mode == 'reco-first':
                     
         filename = os.path.join(dirs['tmp'], f"{varname}_series_00000.nc")
-        timeseries = xr.open_mfdataset(filename, use_cftime=True, preprocess=lambda data: process_data(data, ftype='series', dim=info['dim'], grid=info['grid']))
+        time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
+        timeseries = xr.open_mfdataset(filename, decode_times=time_coder, preprocess=lambda data: process_data(data, ftype='series', dim=info['dim'], grid=info['grid']))
         theta = timeseries[varname].isel(time=-1)
         basis = pattern.isel(time=0)
         field += theta * basis
 
         field = field.drop_vars({'time'})
-
-        if debug == True:
-            logging.info(f"Debug mode: ON --> Plotting reconstructed field")
-            #rdata = reader_rebuilt(expname, endleg, endleg)
-            filename = os.path.join(dirs['tmp'], f"{varname}_anomaly.nc")
-            time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
-            data = xr.open_dataset(filename, decode_times=time_coder)
-            #data = xr.open_mfdataset(filename, use_cftime=True) #, preprocess=lambda data: process_data(data, ftype='pattern', dim=info['dim'], grid=info['grid']))
-            figname=os.path.join(dirs['tmp'], f"{varname}_reco-first.png")
-            logging.info(f"Creating figure: {figname}")
-            debug_recoplot(field, data, varname, figname)
 
         # add mean (TO BE CHANGED!!!!!!!!!)
         logging.info(f"Adding mean trend of {varname}.nc")
@@ -853,7 +800,8 @@ def project_eofs(expname, varname, endyear, window, neofs, yearleap, mode='full'
 
         for i in range(feofs):
             filename = os.path.join(dirs['tmp'], f"{varname}_series_{str(i).zfill(5)}.nc")
-            timeseries = xr.open_mfdataset(filename, use_cftime=True, preprocess=lambda data: process_data(data, ftype='series', dim=info['dim'], grid=info['grid']))
+            time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
+            timeseries = xr.open_mfdataset(filename, decode_times=time_coder, preprocess=lambda data: process_data(data, ftype='series', dim=info['dim'], grid=info['grid']))
             p = timeseries.polyfit(dim='time', deg=1, skipna=True)
             theta = xr.polyval(xf, p[f"{varname}_polyfit_coefficients"])
             basis = pattern.isel(time=i)
@@ -863,9 +811,6 @@ def project_eofs(expname, varname, endyear, window, neofs, yearleap, mode='full'
     elif mode == 'fit':
 
         ds = reader_nemo_field(expname=expname, startyear=startyear, endyear=endyear, varname=varname)
-        if not use_cftime:
-            new_time = get_decimal_year(ds['time'].values)
-            ds['time'] = new_time
         coeffs = ds.polyfit(dim='time', deg=1, skipna=True)
         field = xr.polyval(xf, coeffs[f"{varname}_polyfit_coefficients"])
         field['time'] = xf
@@ -880,8 +825,7 @@ def project_eofs(expname, varname, endyear, window, neofs, yearleap, mode='full'
 # [8] forecast routines
 
 def create_forecast_field(expname, varname, endyear, window, yearleap, 
-                          mode='full', format='winter', use_cftime=True, 
-                          smoothing=False, debug=False, cleanup=False):
+                          mode='full', format='winter', smoothing=False, cleanup=False):
     """ 
     Function to forecast a single field using EOF
     
@@ -914,8 +858,7 @@ def create_forecast_field(expname, varname, endyear, window, yearleap,
 
     # field projection in the future
     data = project_eofs(expname=expname, varname=varname, endyear=endyear, 
-                        window=window, neofs=neofs, yearleap=yearleap, 
-                        mode=mode, use_cftime=use_cftime, debug=debug)
+                        window=window, neofs=neofs, yearleap=yearleap, mode=mode)
     
     # apply constraints
     data = constraints_for_fields(data=data)
@@ -927,8 +870,8 @@ def create_forecast_field(expname, varname, endyear, window, yearleap,
     return data
 
 
-def forecaster(expname, varnames, endyear, window, yearleap, mode='full', format='winter', 
-               smoothing=False, debug=False, cleanup=False):
+def forecaster(expname, varnames, endleg, window, yearleap, mode='full', format='winter', 
+               smoothing=False, cleanup=False):
     """ 
     Function to assembly the forecast of multiple fields using EOF
     
@@ -943,7 +886,7 @@ def forecaster(expname, varnames, endyear, window, yearleap, mode='full', format
     
     """
 
-    endleg = endyear - 1990 + 2
+    endyear = 1990 + endleg - 2
 
     # read forecast and change restart
     rdata = reader_rebuilt(expname, endleg, endleg)
@@ -951,9 +894,8 @@ def forecaster(expname, varnames, endyear, window, yearleap, mode='full', format
     # create EOF
     for varname in varnames:
         
-        field = create_forecast_field(expname, varname, endyear, window, yearleap, mode='full', 
-                                      format=format, use_cftime=True, 
-                                      smoothing=smoothing, debug=debug, cleanup=cleanup)
+        field = create_forecast_field(expname, varname, endyear, window, yearleap, mode=mode, 
+                                      format=format, smoothing=smoothing, cleanup=cleanup)
 
         field = field.rename({'time': 'time_counter', 'z': 'nav_lev'})
         field['time_counter'] = rdata['time_counter']
@@ -1038,23 +980,27 @@ def restorer(expname, leg):
 # [9] parser
 
 def parse_args():
-    """Command line parser for rebuild_nemo
+    """ Command line parser for nemo-restart """
 
-    This function parses command line arguments for the rebuild_nemo script.
-    It expects two positional arguments: the experiment name and the time leg.
-
-    Returns:
-        argparse.Namespace: Parsed command line arguments.
-    """
-
-    parser = argparse.ArgumentParser(description="Command Line Parser for rebuild_nemo")
+    parser = argparse.ArgumentParser(description="Command Line Parser for NEMO forecast")
 
     # add positional argument (mandatory)
     parser.add_argument("expname", metavar="EXPNAME", help="Experiment name")
-    parser.add_argument("leg", metavar="LEG", help="Time leg", type=str)
+    parser.add_argument("leg", metavar="LEG", help="Leg of rebuilding", type=int)
+    parser.add_argument("window", metavar="WINDOW", help="EOF window", type=int)
+    parser.add_argument("yearleap", metavar="YEARLEAP", help="Year leap in the future", type=int)
+    parser.add_argument("mode", metavar="MODE", help="EOF regression mode", type=str)
+
+    # optional to activate nemo rebuild
+    parser.add_argument("--rebuild", action="store_true", help="Enable NEMO rebuild")
+    parser.add_argument("--forecast", action="store_true", help="Create NEMO forecast")
+    parser.add_argument("--replace", action="store_true", help="Replace NEMO restarts")
+    parser.add_argument("--restore", action="store_true", help="Restore nemo restart files")
+    
     parsed = parser.parse_args()
 
     return parsed
+
 
 if __name__ == "__main__":
     """
@@ -1073,7 +1019,7 @@ if __name__ == "__main__":
     args = parse_args()
     expname = args.expname
     leg = args.leg
-    yearspan = args.yearspan
+    window = args.window
     yearleap = args.yearleap
     mode = args.mode
 
@@ -1088,8 +1034,7 @@ if __name__ == "__main__":
 
     # forecast
     if args.forecast:
-        rdata = forecaster(expname=expname, varnames=varnames, endleg=leg, 
-                           yearspan=yearspan, yearleap=yearleap, mode=mode, smoothing=False, debug=False)
+        rdata = forecaster(expname=expname, varnames=varnames, endleg=leg, window=window, yearleap=yearleap, mode=mode, smoothing=False)
 
         # write new restart file
         writer_restart(expname, rdata, leg)       
@@ -1102,4 +1047,4 @@ if __name__ == "__main__":
     if args.restore:
         restorer(expname, leg)
 
-    shutil.copy('logfile.log', os.path.join(dirs['tmp'], str(leg).zfill(3), 'logfile.log'))
+    # shutil.copy('logfile.log', os.path.join(dirs['tmp'], str(leg).zfill(3), 'logfile.log'))
