@@ -17,30 +17,17 @@ import os
 import glob
 import yaml
 import shutil
-import platform
 import argparse
 import subprocess
 
 
-def load_config():
-    """ Load configuration file """
+# global paths
+base_path = "/ec/res4/scratch/itas/ece4"
+src_path = "/ec/res4/hpcperm/itas/src/gitlab/ecearth4-v4.1.3/sources/nemo-4.2/tools/REBUILD_NEMO"
+data_path = "/lus/h2resw01/hpcperm/ccpd/ECE4-DATA"
 
-    config_path = "../../config.yaml"
-    if os.path.exists(config_path):
-        with open(config_path, "r") as f:
-            return yaml.safe_load(f)
-
-    return {}
-    
 def folders(expname):
     """ List of global paths dependent on expname """
-    
-    system = platform.system().lower()
-    config = load_config()
-    config = config.get(system)    
-    base_path = config.get("base_path")
-    src_path = config.get("src_path")
-    data_path = config.get("data_path")
 
     dirs = {
         'exp': os.path.join(base_path, expname),
@@ -50,7 +37,6 @@ def folders(expname):
         'log': os.path.join(base_path, expname, "log"),
         'tmp': os.path.join(base_path, expname, "tmp"),
         'post': os.path.join(base_path, expname, "post"),
-        'rebuild': os.path.join(src_path, "rebuild_nemo"),
         'domain': os.path.join(data_path, "nemo", "domain")
     }
 
@@ -88,7 +74,7 @@ def rebuilder(expname, leg):
     
     os.makedirs(os.path.join(dirs['tmp'], str(leg).zfill(3)), exist_ok=True)
 
-    rebuild_exe = os.path.join(dirs['rebuild'], "rebuild_nemo.sh")
+    rebuild_exe = os.path.join(src_path, "rebuild_nemo")
   
     for kind in ['restart', 'restart_ice']:
         print(' Processing ' + kind)
