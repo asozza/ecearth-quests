@@ -5,9 +5,9 @@ import numpy as np
 import xesmf as xe
 import shutil
 import tempfile
-from utils import modify_single_grib, modify_single_grib_, nullify_grib, modify_grib_file
+from utils import modify_single_grib, nullify_grib
 from utils import modify_value, replace_value, regrid_dataset 
-from utils import extract_grid_info, spectral2gaussian, get_grib_metadata
+from utils import extract_grid_info, spectral2gaussian
 from utils import GRIB2, NC4
 from eocene_functions import albedo, compute_slope, vegetation_zhang
 from cdo import Cdo
@@ -308,10 +308,11 @@ class EoceneOIFS():
         input_surface = os.path.join(self.idir_init, 'ICMGGECE4INIT')
         output_surface = os.path.join(self.odir_init, 'ICMGGECE4INIT')
 
-        current = input_surface
+         # Start by copying the base surface file
+        shutil.copy(input_surface, output_surface)
 
         # Insert sd_orography (sdor)
-        modify_single_grib_(
+        modify_single_grib(
             inputfile=input_surface,
             outputfile=output_surface,
             variables=['sdor'],
@@ -320,49 +321,43 @@ class EoceneOIFS():
             newfield=sd_orog
         )
 
-        current = output_surface
-
         # Insert slope (slor) computed from sd
-       # modify_grib_file(
-       #     inputfile=current,
-       #     outputfile=output_surface,
-       #     variables=['slor'],
-       #     spectral=False,
-       #     myfunction=compute_slope,
-       #     sd_eoc=sd_orog
-       # )
-       # current = output_surface
+        modify_single_grib(
+            inputfile=output_surface,
+            outputfile=output_surface,
+            variables=['slor'],
+            spectral=False,
+            myfunction=compute_slope,
+            sd_eoc=sd_orog
+        )
 
         # Set anisotropy and soil type to 1
-       # modify_grib_file(
-       #     inputfile=current,
-       #     outputfile=output_surface,
-       #     variables=['isor', 'slt'],
-       #     spectral=False,
-       #     myfunction=modify_value,
-       #     newvalue=1.  
-       # )
-       # current = output_surface
+        modify_single_grib(
+            inputfile=output_surface,
+            outputfile=output_surface,
+            variables=['isor', 'slt'],
+            spectral=False,
+            myfunction=modify_value,
+            newvalue=1.  
+        )
 
         # Zero out other subgrid orographic fields
-        #nullify_grib(
-        #    inputfile=current,
-        #    outputfile=output_surface,
-        #    variables=['sd', 'sdfor', 'anor', 'cl', 'chnk']
-        #)
-        #current = output_surface
+        nullify_grib(
+            inputfile=output_surface,
+            outputfile=output_surface,
+            variables=['sd', 'sdfor', 'anor', 'cl', 'chnk']
+        )
 
         # Modify vegetation variables
-       # modify_grib_file(
-       #     inputfile=current,
-       #     outputfile=output_surface,
-       #     variables=['tvh', 'tvl', 'cvh', 'cvl'],
-       #     spectral=False,
-       #     myfunction=vegetation_zhang,
-       #     herold_path=self.herold,
-       #     gaussian=self.gaussian
-       # )
-       # current = output_surface
+        modify_single_grib(
+            inputfile=output_surface,
+            outputfile=output_surface,
+            variables=['tvh', 'tvl', 'cvh', 'cvl'],
+            spectral=False,
+            myfunction=vegetation_zhang,
+            herold_path=self.herold,
+            gaussian=self.gaussian
+        )
 
         # update the land sea mask
        # modify_grib_file(
