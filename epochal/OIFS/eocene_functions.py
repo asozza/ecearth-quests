@@ -20,6 +20,12 @@ import tempfile
 from cdo import Cdo
 cdo = Cdo()
 
+def _to_tll(field):
+    """Force (time, lat, lon) ordering"""
+    if set(field.dims) == {"time", "lat", "lon"}:
+        return field.transpose("time", "lat", "lon")
+    return field
+
 def vegetation_zhang(field, herold_path, gaussian, var=None, **kwargs):
         """"
         Alternative method to create the ICMGG vegetation data for the Eocene OIFS.
@@ -38,8 +44,9 @@ def vegetation_zhang(field, herold_path, gaussian, var=None, **kwargs):
 
         herold = xr.open_dataset(herold_remap)
 
-        tvh = xr.full_like(field['tvh'], 0)
-        tvl = xr.full_like(field['tvl'], 0)
+        tvh = _to_tll(xr.full_like(field["tvh"], 0))
+        tvl = _to_tll(xr.full_like(field["tvl"], 0))
+
         cvh = xr.zeros_like(tvh)
         cvl = xr.zeros_like(tvl)
 
@@ -62,6 +69,7 @@ def vegetation_zhang(field, herold_path, gaussian, var=None, **kwargs):
 
         for biome_id in range(1, 10): # assuming biome IDs go from 1 to 9
             mask = herold['eocene_biome_hp'] == biome_id
+            mask = mask.expand_dims(time=tvh.time)
 
             if biome_id in biome_to_tvh:
                 tvh = xr.where(mask, biome_to_tvh[biome_id], tvh)
@@ -184,11 +192,9 @@ def compute_slope (field, var=None, sd_eoc=None, a=4.376786e-05, b=2.476405e-04)
     a, b : float
         Linear transfer coefficients.
     """
-    # Interpolate sd_eoc to the GRIB grid if needed
-    sd = sd_eoc
-
+    
     # Apply the linear function
-    new_slope = a * sd + b
+    new_slope = a * sd_eoc + b
 
     return new_slope
 
