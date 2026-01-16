@@ -9,15 +9,15 @@ from utils import modify_single_grib, nullify_grib
 from utils import modify_value, replace_value, regrid_dataset 
 from utils import extract_grid_info, spectral2gaussian
 from utils import GRIB2, NC4
+import subprocess
 from eocene_functions import albedo, compute_slope, vegetation_zhang
 from cdo import Cdo
 cdo = Cdo()
 
 class EoceneOIFS():
 
-    def __init__(self, idir, odir, herold, 
-                 resolution="TL63L31",
-                 startdate="19900101",):
+    def __init__(self, idir, odir, herold, startdate, 
+                 resolution="TL63L31"):
         """
         Initialize the EoceneOIFS class.
         
@@ -249,18 +249,21 @@ class EoceneOIFS():
         Create the ICMCL data for the Eocene OIFS.
         Set the albedo and the LAI to constant values.
         """
-
+        input_climate = os.path.join(self.idir_climate, 'ICMCLECE4')
+        output_climate = os.path.join(self.odir_climate, 'ICMCLECE4')
         variables = ['al', 'aluvp', 'aluvd', 'alnip', 'alnid', 'lai_lv', 'lai_hv']
 
         modify_single_grib(
-           inputfile=os.path.join(self.idir_climate, "ICMCLECE4"),
-           outputfile=os.path.join(self.odir_climate, "ICMCLECE4"),
+           inputfile=input_climate,
+           outputfile=output_climate,
            variables=variables,
            spectral=False,
            myfunction=albedo,
            lsm_present=lsm_present,
            landsea=landsea  
            ) 
+        
+        subprocess.run(["/lus/h2resw01/hpcperm/ecme3497/github/ecearth-quests/epochal/OIFS/fix_grib.sh", output_climate], check=True)
 
 
     def create_sh(self, orog):
@@ -294,7 +297,7 @@ class EoceneOIFS():
         #    outputfile=output_spectral,
         #)
 
-    def create_init(self, landsea, sd_orog):
+    def create_init(self, landsea, sd_orog, **kwargs):
         """
         Create the ICMGGECE4INIT data for the Eocene OIFS.
         Replace landsea mask
@@ -311,16 +314,36 @@ class EoceneOIFS():
          # Start by copying the base surface file
         shutil.copy(input_surface, output_surface)
 
-        # Insert sd_orography (sdor)
+        # update the land sea mask
         modify_single_grib(
             inputfile=input_surface,
+            outputfile=output_surface,
+            variables=['lsm'],
+            spectral=False,
+            myfunction=replace_value,
+            newfield=landsea
+        )
+
+        modify_single_grib(
+            inputfile=output_surface,
+            outputfile=output_surface,
+            variables=['tvh','tvl','cvh','cvl'],
+            spectral=False,
+            myfunction=vegetation_zhang,
+            herold_path=self.herold,
+            gaussian=self.gaussian
+        )
+
+        # Insert sd_orography (sdor)
+        modify_single_grib(
+            inputfile=output_surface,
             outputfile=output_surface,
             variables=['sdor'],
             spectral=False,
             myfunction=replace_value,
             newfield=sd_orog
         )
-
+        print(type(sd_orog))
         # Insert slope (slor) computed from sd
         modify_single_grib(
             inputfile=output_surface,
@@ -342,32 +365,35 @@ class EoceneOIFS():
         )
 
         # Zero out other subgrid orographic fields
-        nullify_grib(
-            inputfile=output_surface,
-            outputfile=output_surface,
-            variables=['sd', 'sdfor', 'anor', 'cl', 'chnk']
-        )
-
-        # Modify vegetation variables
         modify_single_grib(
             inputfile=output_surface,
             outputfile=output_surface,
-            variables=['tvh', 'tvl', 'cvh', 'cvl'],
+            variables=['sdfor', 'anor', 'cl', 'chnk'],
             spectral=False,
-            myfunction=vegetation_zhang,
-            herold_path=self.herold,
-            gaussian=self.gaussian
+            myfunction=modify_value,
+            newvalue=0.  
         )
 
-        # update the land sea mask
-       # modify_grib_file(
-       #     inputfile=current,
-       #     outputfile=output_surface,
-       #     variables=['lsm'],
-       #     spectral=False,
-       #     myfunction=replace_value_grib,
-       #     newfield=landsea
-       # )
+        nullify_grib(
+            inputfile=output_surface,
+            outputfile=output_surface,
+            variables=['sd']
+        )
+
+        #Modify vegetation variables
+        
+
+
+        #modify_single_grib(
+        #    inputfile=output_surface,
+        #    outputfile=output_surface,
+        #    variables=['tvh','tvl','cvh','cvl'],
+        #    spectral=False,
+        #    myfunction=replace_value,
+        #    newfield= vegetation_
+        #)
+
+
         
 
     def create_iniua(self):
@@ -497,7 +523,7 @@ class EoceneOIFS():
             aer_ifs_paleo[varname2].data = new_var_rg_int.data.astype('float32')
 
         # Save Eocene aerosol climatology
-        output_path = os.path.join(self.odir_init, "aerosol_cams_climatology_43R3a_EOCENO.nc")
+        output_path = os.path.join(self.odir, 'oifs', 'ifsdata/aerosol_cams_climatology_43R3a.nc')
         if os.path.exists(output_path):
             os.remove(output_path)
         aer_ifs_paleo.to_netcdf(output_path)
