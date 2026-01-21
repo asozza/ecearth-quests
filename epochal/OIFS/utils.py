@@ -29,7 +29,7 @@ def nullify_grib(inputfile, outputfile, variables):
         varlist=','.join(variables)
         singlefile = cdo.selname(varlist, input=inputfile, options="--eccodes")
         tempfile = cdo.mulc(0, input=singlefile, options="--eccodes")
-
+        cdo.copy(input=tempfile, output="nulify.nc")
         replace_field(inputfile, tempfile, outputfile, variables)
     else: 
         print(f'{inputfile} does not exist!')
@@ -114,6 +114,7 @@ def modify_single_grib(inputfile, outputfile, variables, myfunction, spectral=Fa
             cdo.gp2spl(input=netcdf, output=singlefile, options=grib)
         else:
             cdo.remapnn(inputfile, input=netcdf, output=singlefile, options=grib)
+        cdo.copy(input=singlefile, output='singlefile.nc')
 
         replace_field(inputfile, singlefile, outputfile, variables)
     else: 
@@ -164,10 +165,10 @@ def replace_field(inputfile, singlefile, outputfile, variable):
         inputfile, "filtered.grib"], check=True)
     if os.path.exists("filtered.grib"):
         subprocess.run(["grib_copy", "filtered.grib", singlefile, outputfile], check=True)
-        os.remove("filtered.grib")
+        #os.remove("filtered.grib")
     else:
         shutil.copyfile(singlefile, outputfile)
-    os.remove(singlefile)
+    #os.remove(singlefile)
     
 
 def unpack_grib_file(inputfile, tmpfile):
