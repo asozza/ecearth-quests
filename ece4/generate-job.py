@@ -155,7 +155,7 @@ def generate_user_config(expname, config):
     logging.info(f"User configuration file written to: {user_config_file}")
 
 
-def generate_job(kind, config, expname):
+def generate_job(kind, config, expname, scratch=False):
     """
     Generate a job configuration file for the experiment.
 
@@ -163,6 +163,7 @@ def generate_job(kind, config, expname):
         kind (str): Type of experiment (e.g., AMIP).
         config (str): Path to the configuration file.
         expname (str): Name of the experiment.
+        scratch (bool): Whether to force run from scratch by deleting existing run directory.
     """
 
     # load configuration file and setup core variables
@@ -240,6 +241,11 @@ def generate_job(kind, config, expname):
     logging.info("Disabling resubmit option!")
     context['job']['resubmit'] = False
 
+    #activate scratch mode if requested
+    if scratch:
+        logging.warning("Run from scratch mode activated, existing run directory will be deleted if it exists!")
+        context['experiment']['run_from_scratch'] = True
+
     # set account and queue
     logging.debug('Running on platform: %s', config['platform'])
     logging.debug('Using launch method: %s', config['launch-method'])
@@ -295,6 +301,7 @@ if __name__ == "__main__":
     parser.add_argument("-c","--config", type=str, help="YAML configuration file", default="config.yml")
     parser.add_argument("expname", type=str, help="Experiment name (e.g., aa00).")
     parser.add_argument("--clean", action="store_true", help="Clean up the experiment folder.")
+    parser.add_argument("--scratch", action="store_true", help="Force run from scratch (delete existing run directory).")
     parser.add_argument("-l", "--loglevel", type=str, default="info", help="Set the logging level (default: info).")
 
     args = parser.parse_args()
@@ -312,7 +319,7 @@ if __name__ == "__main__":
     config = load_yaml(args.config, expand_env=True)
 
     create_folder(args.expname, config, args.clean)
-    generate_job(args.kind, config, args.expname)
+    generate_job(args.kind, config, args.expname, args.scratch)
     generate_user_config(args.expname, config)
     create_launch(args.expname, config)
 
