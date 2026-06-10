@@ -21,7 +21,9 @@ run_dir: "/scratch/ece4"
 ece_dir: "/hpcperm/ecearth4/src"
 
 # where the initial data of ecearth4 are (ensure that cmip6-data is properly loaded)
-ini_dir: "/hpcperm/ece-4-database"
+ini_dir: 
+  default: "/hpcperm/ece-4-database"
+  paleo: "/hpcperm/ece-4-database-paleo"
 
 # account for billing
 account: "hpcaccount"
