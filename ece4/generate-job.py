@@ -7,8 +7,8 @@ Some caution is required to edit the YAML CommentedMap and CommentedSeq objects.
 Usage:
     python generate-job.py -k <experiment_type> -e <experiment_name> [-c <config_file>] [--clean]
 
+    <experiment_name> Name of the experiment (e.g., aa00).
     -k, --kind <experiment_type>   Type of experiment (e.g., AMIP, CPLD, OMIP).
-    -e, --expname <experiment_name> Name of the experiment (e.g., aa00).
     -c, --config <config_file>     Path to the configuration file (default: config.yml).
     --clean                        Clean up the experiment folder if it exists.
 """
