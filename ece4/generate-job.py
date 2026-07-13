@@ -202,6 +202,8 @@ def generate_job(kind, config, expname, model, scratch=False):
         context['model_config']['nemo']['icb_fwf'] = False
         # disable M7 chemistry
         context['model_config']['oifs']['compo']['activate'] = False
+        # disable land ice 
+        context['model_config']['oifs']['landice'] = False
         logging.info("Using PALEO model configuration")
     elif model == "FAST":
         config['resolution']['oifs'] = "TL63L31"
