@@ -7,8 +7,8 @@ Some caution is required to edit the YAML CommentedMap and CommentedSeq objects.
 Usage:
     python generate-job.py -k <experiment_type> -e <experiment_name> [-c <config_file>] [--clean]
 
+    <experiment_name> Name of the experiment (e.g., aa00).
     -k, --kind <experiment_type>   Type of experiment (e.g., AMIP, CPLD, OMIP).
-    -e, --expname <experiment_name> Name of the experiment (e.g., aa00).
     -c, --config <config_file>     Path to the configuration file (default: config.yml).
     --clean                        Clean up the experiment folder if it exists.
 """
@@ -91,8 +91,10 @@ def create_folder(expname, config, clean=False):
 
     # copy the template files
     base_dir = os.path.join(config["ece_dir"], "scripts", "runtime")
-    for directory in ["scriptlib", "templates"]:
-        shutil.copytree(os.path.join(base_dir, directory), os.path.join(job_dir, directory), dirs_exist_ok=True)
+    for directory in ["scriptlib", "templates", "presets"]:
+        if os.path.exists(os.path.join(base_dir, directory)):
+            logging.debug(f"Copying {directory} from {base_dir} to {job_dir}")
+            shutil.copytree(os.path.join(base_dir, directory), os.path.join(job_dir, directory), dirs_exist_ok=True)
     
     logging.info(f"Created job directory: {job_dir}")
 
@@ -129,13 +131,14 @@ se user-config.yml {expname}.yml ${{platform}} scriptlib/main.yml --loglevel inf
     logging.info(f"Bash script written to: {script_path}")
 
 
-def generate_user_config(expname, config):
+def generate_user_config(expname, config, model):
     """
     Generate a user configuration file for the experiment.
 
     Args:
         kind (str): Type of experiment (e.g., AMIP).
         expname (str): Name of the experiment.
+        model (str): Model you want to run (PALEO or FAST).
         config (str): Path to the configuration file.
     """
 
@@ -145,7 +148,10 @@ def generate_user_config(expname, config):
     # define configuration
     user_config = load_yaml(os.path.join(src_dir, "scripts", "runtime", "user-config-example.yml"))
     user_config[0]['base.context']['experiment']['run_dir'] = noparse_block(config['run_dir']+"/{{experiment.id}}")
-    user_config[0]['base.context']['experiment']['ini_dir'] =  noparse_block(config['ini_dir'])
+    if model == "PALEO":
+        user_config[0]['base.context']['experiment']['ini_dir'] =  noparse_block(config['ini_dir']['paleo'])
+    else:
+        user_config[0]['base.context']['experiment']['ini_dir'] =  noparse_block(config['ini_dir']['default'])
     user_config[0]['base.context']['experiment']['base_dir'] =  noparse_block(src_dir)
 
     # save the user configuration file
@@ -155,14 +161,16 @@ def generate_user_config(expname, config):
     logging.info(f"User configuration file written to: {user_config_file}")
 
 
-def generate_job(kind, config, expname):
+def generate_job(kind, config, expname, model, scratch=False):
     """
     Generate a job configuration file for the experiment.
 
-    Args:
+        Args:
         kind (str): Type of experiment (e.g., AMIP).
         config (str): Path to the configuration file.
         expname (str): Name of the experiment.
+        model (str): Model you want to run (PALEO or FAST).
+        scratch (bool): Whether to force run from scratch by deleting existing run directory.
     """
 
     # load configuration file and setup core variables
@@ -178,6 +186,31 @@ def generate_job(kind, config, expname):
     # set the CMIP6 forcing as default
     context['experiment']['forcing']['cmip']['version'] = 'CMIP6'
     logging.warning("Using by default CMIP6 forcing data")
+
+    if model == "PALEO":
+        config['resolution']['oifs'] = "TL63L31"
+        config['resolution']['nemo'] = "PALEORCA2L31"
+        # disable MacV2sp for paleo
+        context['experiment']['forcing']['oifs']['macv2sp'] = 0
+        # activate eocene fix
+        context['experiment']['exotic_experiment'] = {}
+        context['experiment']['exotic_experiment']['eocene'] = True
+        # disable wave model
+        context['model_config']['oifs']['wave_model'] = False
+        # remove iceberg and iceshelf calving 
+        context['model_config']['nemo']['isf_fwf'] = False
+        context['model_config']['nemo']['icb_fwf'] = False
+        # disable M7 chemistry
+        context['model_config']['oifs']['compo']['activate'] = False
+        logging.info("Using PALEO model configuration")
+    elif model == "FAST":
+        config['resolution']['oifs'] = "TL63L31"
+        config['resolution']['nemo'] = "ORCA2L31"
+        # disable wave model
+        context['model_config']['oifs']['wave_model'] = False
+         # disable M7 chemistry
+        context['model_config']['oifs']['compo']['activate'] = False
+        logging.info("Using FAST model configuration")
 
     # avoid case sensitivity
     kind = kind.upper()
@@ -218,7 +251,10 @@ def generate_job(kind, config, expname):
         logging.warning("Using initial conditions for ocean: WOA13")
         level = 'L31' if config['resolution']['nemo'] in ['PALEORCA2L31', 'ORCA2L31'] else 'L75'
         grid = config['resolution']['nemo'].replace(level, "")
-        context['experiment']['nemo']['start_from']['ts_state']['file'] = f'woa13-levitus-{level}.nc'
+        if model == "PALEO":
+            context['experiment']['nemo']['start_from']['ts_state']['file'] = f"woa13-levitus-{level}_deepmip-34.nc"
+        else:
+            context['experiment']['nemo']['start_from']['ts_state']['file'] = f'woa13-levitus-{level}.nc'
         context['experiment']['nemo']['start_from']['ts_state']['weight_file'] = f'weights_WOA13d1_2_{grid}_bilinear.nc'
 
     # activate tuning 
@@ -239,6 +275,11 @@ def generate_job(kind, config, expname):
     # disable resubmit
     logging.info("Disabling resubmit option!")
     context['job']['resubmit'] = False
+
+    #activate scratch mode if requested
+    if scratch:
+        logging.warning("Run from scratch mode activated, existing run directory will be deleted if it exists!")
+        context['experiment']['run_from_scratch'] = True
 
     # set account and queue
     logging.debug('Running on platform: %s', config['platform'])
@@ -292,14 +333,18 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Generate job configuration for experiments.")
     parser.add_argument("-k", "--kind", type=str, help="Type of experiment (e.g., AMIP, CPLD, OMIP).", default="CPLD")
+    parser.add_argument("-m", "--model", type=str, help="Model you want to run (PALEO or FAST)", default="PALEO")
     parser.add_argument("-c","--config", type=str, help="YAML configuration file", default="config.yml")
     parser.add_argument("expname", type=str, help="Experiment name (e.g., aa00).")
     parser.add_argument("--clean", action="store_true", help="Clean up the experiment folder.")
+    parser.add_argument("--scratch", action="store_true", help="Force run from scratch (delete existing run directory).")
     parser.add_argument("-l", "--loglevel", type=str, default="info", help="Set the logging level (default: info).")
 
     args = parser.parse_args()
     if args.kind.upper() not in ["AMIP", "CPLD", "OMIP"]:
         raise ValueError("Invalid experiment type. Choose either 'AMIP', 'CPLD' or 'OMIP'.")
+    if args.model.upper() not in ["PALEO", "FAST"]:
+        raise ValueError("Invalid model. Choose either 'PALEO' or 'FAST'.")
     if len(args.expname) != 4:
         raise ValueError("Experiment name must be 4 characters long.")
     numeric_level = getattr(logging, args.loglevel.upper(), None)
@@ -311,8 +356,9 @@ if __name__ == "__main__":
     # load configuration file
     config = load_yaml(args.config, expand_env=True)
 
+
     create_folder(args.expname, config, args.clean)
-    generate_job(args.kind, config, args.expname)
-    generate_user_config(args.expname, config)
+    generate_job(args.kind, config, args.expname, args.model, args.scratch)
+    generate_user_config(args.expname, config, args.model)
     create_launch(args.expname, config)
 
