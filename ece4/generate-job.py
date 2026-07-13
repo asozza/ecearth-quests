@@ -91,8 +91,10 @@ def create_folder(expname, config, clean=False):
 
     # copy the template files
     base_dir = os.path.join(config["ece_dir"], "scripts", "runtime")
-    for directory in ["scriptlib", "templates"]:
-        shutil.copytree(os.path.join(base_dir, directory), os.path.join(job_dir, directory), dirs_exist_ok=True)
+    for directory in ["scriptlib", "templates", "presets"]:
+        if os.path.exists(os.path.join(base_dir, directory)):
+            logging.debug(f"Copying {directory} from {base_dir} to {job_dir}")
+            shutil.copytree(os.path.join(base_dir, directory), os.path.join(job_dir, directory), dirs_exist_ok=True)
     
     logging.info(f"Created job directory: {job_dir}")
 
@@ -188,16 +190,26 @@ def generate_job(kind, config, expname, model, scratch=False):
     if model == "PALEO":
         config['resolution']['oifs'] = "TL63L31"
         config['resolution']['nemo'] = "PALEORCA2L31"
+        # disable MacV2sp for paleo
         context['experiment']['forcing']['oifs']['macv2sp'] = 0
+        # activate eocene fix
         context['experiment']['exotic_experiment'] = {}
         context['experiment']['exotic_experiment']['eocene'] = True
+        # disable wave model
         context['model_config']['oifs']['wave_model'] = False
+        # remove iceberg and iceshelf calving 
         context['model_config']['nemo']['isf_fwf'] = False
         context['model_config']['nemo']['icb_fwf'] = False
+        # disable M7 chemistry
+        context['model_config']['oifs']['compo']['activate'] = False
         logging.info("Using PALEO model configuration")
     elif model == "FAST":
         config['resolution']['oifs'] = "TL63L31"
         config['resolution']['nemo'] = "ORCA2L31"
+        # disable wave model
+        context['model_config']['oifs']['wave_model'] = False
+         # disable M7 chemistry
+        context['model_config']['oifs']['compo']['activate'] = False
         logging.info("Using FAST model configuration")
 
     # avoid case sensitivity
