@@ -264,8 +264,8 @@ def generate_job(kind, config, expname, model, scratch=False):
         logging.info("Using tuning file: %s", config['tuning'])
         if not os.path.exists(os.path.join("tuning", config['tuning'])):
             raise ValueError(f"Tuning file {config['tuning']} not found in tuning directory.")
-        shutil.copy(os.path.join("tuning", config['tuning']), os.path.join(job_dir, "templates", config['tuning']))
-        context['model_config']['tuning_file'] = noparse_block("{{se.cli.cwd}}/templates/"+config['tuning'])
+        shutil.copy(os.path.join("tuning", config['tuning']), os.path.join(job_dir, "presets/tuning", config['tuning']))
+        context['model_config']['tuning_file'] = noparse_block("{{se.cli.cwd}}/presets/tuning/"+config['tuning'])
     
     # setup job block
     context['job']['launch']['method'] = PlainScalarString(config['launch-method'])
