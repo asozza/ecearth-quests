@@ -131,7 +131,7 @@ se user-config.yml {expname}.yml ${{platform}} scriptlib/main.yml --loglevel inf
     logging.info(f"Bash script written to: {script_path}")
 
 
-def generate_user_config(expname, config, model):
+def generate_user_config(expname, config):
     """
     Generate a user configuration file for the experiment.
 
@@ -144,6 +144,7 @@ def generate_user_config(expname, config, model):
 
     # load configuration file 
     src_dir = config['ece_dir']
+    model = config['model']
 
     # define configuration
     user_config = load_yaml(os.path.join(src_dir, "scripts", "runtime", "user-config-example.yml"))
@@ -161,7 +162,7 @@ def generate_user_config(expname, config, model):
     logging.info(f"User configuration file written to: {user_config_file}")
 
 
-def generate_job(kind, config, expname, model, scratch=False):
+def generate_job(kind, config, expname, scratch=False):
     """
     Generate a job configuration file for the experiment.
 
@@ -186,6 +187,8 @@ def generate_job(kind, config, expname, model, scratch=False):
     # set the CMIP6 forcing as default
     context['experiment']['forcing']['cmip']['version'] = 'CMIP6'
     logging.warning("Using by default CMIP6 forcing data")
+
+    model = config['model']
 
     if model == "PALEO":
         config['resolution']['oifs'] = "TL63L31"
@@ -213,6 +216,8 @@ def generate_job(kind, config, expname, model, scratch=False):
          # disable M7 chemistry
         context['model_config']['oifs']['compo']['activate'] = False
         logging.info("Using FAST model configuration")
+    else:
+        logging.info("No model specified, using info provided in config file")
 
     # avoid case sensitivity
     kind = kind.upper()
@@ -334,7 +339,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Generate job configuration for experiments.")
     parser.add_argument("-k", "--kind", type=str, help="Type of experiment (e.g., AMIP, CPLD, OMIP).", default="CPLD")
-    parser.add_argument("-m", "--model", type=str, help="Model you want to run (PALEO or FAST)", default="PALEO")
+    #parser.add_argument("-m", "--model", type=str, help="Model you want to run (PALEO or FAST)", default="PALEO")
     parser.add_argument("-c","--config", type=str, help="YAML configuration file", default="config.yml")
     parser.add_argument("expname", type=str, help="Experiment name (e.g., aa00).")
     parser.add_argument("--clean", action="store_true", help="Clean up the experiment folder.")
@@ -344,8 +349,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.kind.upper() not in ["AMIP", "CPLD", "OMIP"]:
         raise ValueError("Invalid experiment type. Choose either 'AMIP', 'CPLD' or 'OMIP'.")
-    if args.model.upper() not in ["PALEO", "FAST"]:
-        raise ValueError("Invalid model. Choose either 'PALEO' or 'FAST'.")
+    # if args.model.upper() not in ["PALEO", "FAST"]:
+    #     raise ValueError("Invalid model. Choose either 'PALEO' or 'FAST'.")
     if len(args.expname) != 4:
         raise ValueError("Experiment name must be 4 characters long.")
     numeric_level = getattr(logging, args.loglevel.upper(), None)
@@ -357,9 +362,8 @@ if __name__ == "__main__":
     # load configuration file
     config = load_yaml(args.config, expand_env=True)
 
-
     create_folder(args.expname, config, args.clean)
-    generate_job(args.kind, config, args.expname, args.model, args.scratch)
-    generate_user_config(args.expname, config, args.model)
+    generate_job(args.kind, config, args.expname, args.scratch)
+    generate_user_config(args.expname, config)
     create_launch(args.expname, config)
 
