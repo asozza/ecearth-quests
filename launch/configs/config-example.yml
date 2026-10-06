@@ -7,7 +7,9 @@
 # TO CUSTOMIZE THIS FILE, COPY IT AS: config.yml 
 # (untracked by .gitignore)
 #
-model: 'PALEO'
+
+# model version (options: 'PALEO', 'FAST') 
+model: 'PALEO' 
 
 # platform of the machine:
 platform: "ecmwf-hpc2020-intel+openmpi.yml"

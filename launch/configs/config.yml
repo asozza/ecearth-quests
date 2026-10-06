@@ -8,6 +8,8 @@
 # (untracked by .gitignore)
 #
 
+model: 
+
 # platform of the machine:
 platform: "ecmwf-hpc2020-intel+openmpi.yml"
 
@@ -22,7 +24,9 @@ ece_dir: "/ec/res4/hpcperm/itas/src/gitlab/ecearth4-v4.1.3"
 
 # where the initial data of ecearth4 are (ensure that cmip6-data is properly loaded)
 #ini_dir: "/lus/h2resw01/hpcperm/ccpd/ECE4-DATA"
-ini_dir: "/ec/res4/hpcperm/itas/data/ece-4-database"
+ini_dir:
+  default: "/ec/res4/hpcperm/itas/data/ece-4-database"
+
 
 # account for billing
 account: "spitsozz" # "spnltune"
