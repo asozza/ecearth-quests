@@ -47,4 +47,4 @@ resolution:
 launch-method: "slurm-wrapper-taskset" # slurm-hetjob, slurm-mp-taskset, slurm-shell, slurm-wrapper-taskset
 
 # tuning file
-#tuning: tuning-TL63ORCA2_v30.yml
+tuning: tuning-TL63ORCA2_v22.yml
