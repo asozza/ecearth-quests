@@ -79,10 +79,9 @@ Below, you can find an example where Panama and Thailand are connected to the ma
 
 > ⚠️ Note that such modifications have to be made for both, the full and the partial vertical coordinates. The one currently used is the block under `ln_zps`, which is for partial coordinates.
 
-```
-fortran                                           
-                                                     ! =====================
-IF( cp_cfg == "paleorca" .AND. jp_cfg == 2 ) THEN    ! PALEORCA configuration
+```fortran                                           
+                                                      ! =====================
+IF( cp_cfg == "paleorca" .AND. jp_cfg == 2 ) THEN     ! PALEORCA configuration
     !                                                 ! =====================   
     !
     ii0 = 134 ;     ii1 = 134

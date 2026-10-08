@@ -216,6 +216,8 @@ def generate_job(kind, config, expname, scratch=False):
          # disable M7 chemistry
         context['model_config']['oifs']['compo']['activate'] = False
         logging.info("Using FAST model configuration")
+    elif model == "v4.1.3":        
+        logging.info("Using old model version configuration (no presets folder)")
     else:
         logging.info("No model specified, using info provided in config file")
 
@@ -269,8 +271,13 @@ def generate_job(kind, config, expname, scratch=False):
         logging.info("Using tuning file: %s", config['tuning'])
         if not os.path.exists(os.path.join("tuning", config['tuning'])):
             raise ValueError(f"Tuning file {config['tuning']} not found in tuning directory.")
-        shutil.copy(os.path.join("tuning", config['tuning']), os.path.join(job_dir, "presets/tuning", config['tuning']))
-        context['model_config']['tuning_file'] = noparse_block("{{se.cli.cwd}}/presets/tuning/"+config['tuning'])
+        if model == "v4.1.3":
+            shutil.copy(os.path.join("tuning", config['tuning']), os.path.join(job_dir, "templates", config['tuning']))
+            context['model_config']['tuning_file'] = noparse_block("{{se.cli.cwd}}/"+config['tuning'])
+        else:
+            shutil.copy(os.path.join("tuning", config['tuning']), os.path.join(job_dir, "presets/tuning", config['tuning']))
+            context['model_config']['tuning_file'] = noparse_block("{{se.cli.cwd}}/presets/tuning/"+config['tuning'])
+        
     
     # setup job block
     context['job']['launch']['method'] = PlainScalarString(config['launch-method'])
@@ -340,7 +347,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate job configuration for experiments.")
     parser.add_argument("-k", "--kind", type=str, help="Type of experiment (e.g., AMIP, CPLD, OMIP).", default="CPLD")
     #parser.add_argument("-m", "--model", type=str, help="Model you want to run (PALEO or FAST)", default="PALEO")
-    parser.add_argument("-c","--config", type=str, help="YAML configuration file", default="config.yml")
+    parser.add_argument("-c","--config", type=str, help="YAML configuration file", default="./configs/config.yml")
     parser.add_argument("expname", type=str, help="Experiment name (e.g., aa00).")
     parser.add_argument("--clean", action="store_true", help="Clean up the experiment folder.")
     parser.add_argument("--scratch", action="store_true", help="Force run from scratch (delete existing run directory).")

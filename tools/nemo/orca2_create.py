@@ -1,4 +1,5 @@
-Authors
+"""
+Authors:
 Paolo Davini (CNR-ISAC, Apr 2024)
 Alessandro Sozza (CNR-ISAC, Apr 2024)
 """
