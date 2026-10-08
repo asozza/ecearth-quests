@@ -29,16 +29,14 @@ The `launch/` folder contains the tools to prepare and submit EC-Earth4 runs:
 | `duplicate_job.py` | Duplicate an existing job for a new experiment |
 | `create_tuning_ensemble.py` | Build an ensemble of runs from a tuning parameter file |
 
-Experiment configurations are in `configs/experiments/`. Start from
-`config-example.yml` and keep your own `config.yml` local (it is ignored by git).
-Tuning parameter files are in `configs/tuning/`.
+Experiment configurations are in `launch/configs`. Tuning parameter files are in `launch/tuning`.
 
 ## Other tools
 
 | Folder | Content |
 |---|---|
 | `monitor/` | Run performance and HPC resource usage (SYPD, memory, TRES) |
-| `restart/` | Rebuild, roll back and pack restart files |
+| `restart/` | Rebuild, roll back and branch NEMO restart files |
 | `scripts/` | various scripts for compile and update EC-Earth code |
 | `tools/`   | NEMO and OIFS grids and fields (e.g. grid bounds, vertical interpolation) |
 
