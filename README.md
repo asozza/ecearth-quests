@@ -42,10 +42,8 @@ Experiment configurations are in `launch/configs`. Tuning parameter files are in
 
 ## Documentation
 
-- [Tuning workflow](docs/tuning.md)
 - [NEMO domain decomposition](docs/domain_decomposition.md)
-- [NEMO tools](docs/nemo_tools.md)
-- [Scaling tests](docs/scaling/README.md)
+- [Scaling tests](docs/scaling.png)
 
 ## License
 
