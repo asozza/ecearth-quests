@@ -8,7 +8,8 @@
 # (untracked by .gitignore)
 #
 
-# model version (options: 'PALEO', 'FAST') 
+# shortcut for model version (options: '', 'PALEO', 'FAST', 'v4.1.3')
+# if empty, it reads model resolution
 model: 'PALEO' 
 
 # platform of the machine:
