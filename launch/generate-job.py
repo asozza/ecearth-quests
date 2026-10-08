@@ -216,6 +216,8 @@ def generate_job(kind, config, expname, scratch=False):
          # disable M7 chemistry
         context['model_config']['oifs']['compo']['activate'] = False
         logging.info("Using FAST model configuration")
+    elif model == "v4.1.3":        
+        logging.info("Using old model version configuration (no presets folder)")
     else:
         logging.info("No model specified, using info provided in config file")
 
