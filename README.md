@@ -17,7 +17,7 @@ conda env create -f environment.yaml
 conda activate ecearth-quests
 ```
 
-On HPC systems, load the required modules first with `. load_modules.sh`.
+On HPC systems, load the required modules first with `. load_modules.sh` (working ONLY on ATOS HPC2020).
 
 ## Launching runs
 
