@@ -61,6 +61,19 @@ def configure_cores_taskset(exp_base, mode, resolution):
 
     return exp_base
 
+
+def find_ts_state(ini_dir, ts_file):
+    """
+    Locate a NEMO T/S initial state file, checking the new data layout first
+    (initial_state/nemo/ts_state) and then the legacy one (nemo/initial).
+    """
+    for subdir in [os.path.join("initial_state", "nemo", "ts_state"), os.path.join("nemo", "initial")]:
+        path = os.path.join(ini_dir, subdir, ts_file)
+        if os.path.exists(path):
+            return path
+    raise FileNotFoundError(f"T/S initial state file {ts_file} not found in {ini_dir}")
+
+
 def create_folder(expname, config, clean=False):
     """
     Create a new folder for the experiment.
@@ -154,6 +167,19 @@ def generate_user_config(expname, config):
     else:
         user_config[0]['base.context']['experiment']['ini_dir'] =  noparse_block(config['ini_dir']['default'])
     user_config[0]['base.context']['experiment']['base_dir'] =  noparse_block(src_dir)
+
+    # directory of saved initial conditions (used only with initial_state.saveic):
+    # leave it empty if not configured, so that ScriptEngine reports a clear error
+    if config.get('ics_dir'):
+        user_config[0]['base.context']['experiment']['ics_dir'] = noparse_block(config['ics_dir'])
+    else:
+        user_config[0]['base.context']['experiment']['ics_dir'] = None
+
+    # no monitoring upload: unset placeholder API keys (fallback to local markdown)
+    monitoring = user_config[0]['base.context']['experiment'].get('monitoring', {})
+    for key in ['gitlab_api_key', 'redmine_api_key']:
+        if key in monitoring:
+            monitoring[key] = None
 
     # save the user configuration file
     job_dir = os.path.join(config['job_dir'], expname)
@@ -253,16 +279,26 @@ def generate_job(kind, config, expname, scratch=False):
         logging.info("Using OMIP configuration")
         logging.debug("NEMO resolution is set to %s", config["resolution"]["nemo"])
 
-    # initial conditions
+    # initial conditions (experiment.initial_state structure, ecearth4!303)
+    ini_key = 'paleo' if model == "PALEO" else 'default'
+    ini_dir = config['ini_dir'][ini_key]
+    if not os.path.isdir(os.path.join(ini_dir, "initial_state")):
+        logging.warning("No initial_state/ folder in %s: OIFS/OASIS initial conditions will not be found "
+                        "with the new EC-Earth4 data layout", ini_dir)
     if kind != "AMIP":
-        logging.warning("Using initial conditions for ocean: WOA13")
-        level = 'L31' if config['resolution']['nemo'] in ['PALEORCA2L31', 'ORCA2L31'] else 'L75'
-        grid = config['resolution']['nemo'].replace(level, "")
-        if model == "PALEO":
-            context['experiment']['nemo']['start_from']['ts_state']['file'] = f"woa13-levitus-{level}_deepmip-34.nc"
+        ts_file = (config.get('ts_state') or {}).get(ini_key)
+        if ts_file:
+            # custom T/S file: set path and weights explicitly
+            level = 'L31' if config['resolution']['nemo'] in ['PALEORCA2L31', 'ORCA2L31'] else 'L75'
+            grid = config['resolution']['nemo'].replace(level, "")
+            ts_path = find_ts_state(ini_dir, ts_file)
+            nemo_ic = context['experiment']['initial_state']['nemo']
+            nemo_ic['path'] = ts_path
+            nemo_ic['weight_file'] = os.path.join(ini_dir, "nemo", "weights", f"weights_WOA13d1_2_{grid}_bilinear.nc")
+            logging.warning("Using initial conditions for ocean: %s", ts_path)
         else:
-            context['experiment']['nemo']['start_from']['ts_state']['file'] = f'woa13-levitus-{level}.nc'
-        context['experiment']['nemo']['start_from']['ts_state']['weight_file'] = f'weights_WOA13d1_2_{grid}_bilinear.nc'
+            # upstream default: <ini_dir>/initial_state/nemo/ts_state/woa13-levitus-<vres>.nc
+            logging.warning("Using initial conditions for ocean: WOA13 (EC-Earth4 default)")
 
     # activate tuning 
     if 'tuning' in config:
