@@ -1,8 +1,17 @@
 #!/bin/bash
 
+# Working ONLY on ATOS HPC2020
+
+module load prgenv/intel
+module load intel/2021.4.0
+module load hpcx-openmpi/2.9.0
+module load intel-mkl/19.0.5
+module load fftw/3.3.9
+module load cmake/3.20.2
+module load netcdf4-parallel/4.9.1
+module load hdf5-parallel/1.10.6
 module load python3/3.12
-module load cdo nco ncview
-module load intel/2021.4.0 intel-mkl/19.0.5 prgenv/intel hdf5 netcdf4
+module load cdo
 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/apps/netcdf4/4.9.1/INTEL/2021.4/lib:/usr/local/apps/hdf5/1.12.2/INTEL/2021.4/lib
-
+# needed for running REBUILD_NEMO
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$NETCDF4_PARALLEL_DIR/lib:$ECCODES_DIR/lib:$HDF5_DIR/lib

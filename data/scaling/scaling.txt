@@ -1,0 +1,14 @@
+# nodes  cores  SYPD  CHPSY
+# 
+
+# TL159-eORCA1 (storage ~11GB per year)
+   1     128     10.   307.
+   2     256     16.   384.
+   3     384     23.   400.
+   4     512     32.   424.
+
+# TL63-ORCA2 (storage ~1.3GB per year)
+   1     128     130.   24.
+   2     256     220.   27.
+   3     384     260.   35.
+   4     512     300.   41.

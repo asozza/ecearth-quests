@@ -8,9 +8,9 @@
 #SBATCH --mem=65G
 #SBATCH --output=log_compile_ece4.%j.out
 #SBATCH --error=log_compile_ece4.%j.out
-#SBATCH --account=spitsozz
+#SBATCH --account=<hpcaccount>
 
-ECEDIR=/lus/h2resw01/hpcperm/$USER/ecearth4/revisions/main
+ECEDIR=/hpcperm/${user}/ecearth4-fork
 platform=ecmwf-hpc2020-intel+openmpi.yml
 ECESOURCES=$ECEDIR/scripts/build
 

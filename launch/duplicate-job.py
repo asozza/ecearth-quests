@@ -77,7 +77,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Duplicate job configuration for experiments.")
     parser.add_argument("-i", "--expname1", type=str, required=True, help="Source experiment name (e.g., aa00).")
     parser.add_argument("-o", "--expname2", type=str, required=True, help="Target experiment name (e.g., bb00).")
-    parser.add_argument("-c", "--config", type=str, default="config.yml", help="Path to the configuration file (default: config.yml).")
+    parser.add_argument("-c", "--config", type=str, default="./configs/config.yml", help="Path to the configuration file (default: config.yml).")
     parser.add_argument("--clean", action="store_true", help="Clean up temporary files after duplication.")
 
     args = parser.parse_args()
